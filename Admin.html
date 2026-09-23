@@ -35,9 +35,8 @@
     <!-- Deben ser IDÉNTICOS a los que pusiste en index.html -->
     <!-- ============================================ -->
     <script>
-   const SUPABASE_URL = "https://bfyryhopswahqdqpkqwc.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmeXJ5aG9wc3dhaHFkcXBrcXdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxOTMyMjQsImV4cCI6MjEwNTc2OTIyNH0.ivaCXInD7K3tkfv0WgzkJ2Erk-dd8UgNAkwSvXwoHSE";
-
+        const SUPABASE_URL = "https://bfyryhopswahqdqpkqwc.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmeXJ5aG9wc3dhaHFkcXBrcXdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxOTMyMjQsImV4cCI6MjEwNTc2OTIyNH0.ivaCXInD7K3tkfv0WgzkJ2Erk-dd8UgNAkwSvXwoHSE";
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     </script>
 
@@ -58,7 +57,12 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
                 </div>
                 <div>
                     <label class="text-xs font-bold text-slate-600 block mb-1">Contraseña</label>
-                    <input type="password" id="loginPassword" required class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 text-sm">
+                    <div class="relative">
+                        <input type="password" id="loginPassword" required class="w-full px-3 py-2.5 pr-10 rounded-xl border border-slate-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 text-sm">
+                        <button type="button" id="togglePasswordBtn" tabindex="-1" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+                            <i class="fa-solid fa-eye text-sm"></i>
+                        </button>
+                    </div>
                 </div>
                 <p id="loginError" class="hidden text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></p>
                 <button type="submit" id="loginBtn" class="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold hover:shadow-lg hover:shadow-purple-500/30 transition-all">
@@ -204,6 +208,14 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
         }
 
         function setupAuthListeners() {
+            document.getElementById('togglePasswordBtn').addEventListener('click', () => {
+                const input = document.getElementById('loginPassword');
+                const icon = document.querySelector('#togglePasswordBtn i');
+                const isHidden = input.type === 'password';
+                input.type = isHidden ? 'text' : 'password';
+                icon.className = isHidden ? 'fa-solid fa-eye-slash text-sm' : 'fa-solid fa-eye text-sm';
+            });
+
             document.getElementById('loginForm').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const email = document.getElementById('loginEmail').value;
@@ -214,17 +226,24 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
                 btn.disabled = true;
                 btn.innerText = 'Ingresando...';
 
-                const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+                try {
+                    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
-                btn.disabled = false;
-                btn.innerText = 'Iniciar sesión';
-
-                if (error) {
-                    errorEl.innerText = 'Correo o contraseña incorrectos.';
+                    if (error) {
+                        console.error('Error de login (Supabase):', error);
+                        errorEl.innerText = error.message || 'Correo o contraseña incorrectos.';
+                        errorEl.classList.remove('hidden');
+                        return;
+                    }
+                    showPanel(data.session);
+                } catch (err) {
+                    console.error('Error inesperado al conectar con Supabase:', err);
+                    errorEl.innerText = 'No se pudo conectar con Supabase. Abre la consola (F12) para ver el detalle.';
                     errorEl.classList.remove('hidden');
-                    return;
+                } finally {
+                    btn.disabled = false;
+                    btn.innerText = 'Iniciar sesión';
                 }
-                showPanel(data.session);
             });
 
             document.getElementById('logoutBtn').addEventListener('click', async () => {
