@@ -1,0 +1,112 @@
+# Configuración de Supabase — Variedades Guerra
+
+Sigue estos pasos en orden. Solo se hacen **una vez**.
+
+## 1. Crear el proyecto
+1. Ve a https://supabase.com y crea una cuenta gratis.
+2. Crea un nuevo proyecto (elige una región cercana, ej. la más cercana a El Salvador).
+3. Anota la **contraseña de la base de datos** que te pida (guárdala aparte).
+
+## 2. Crear la tabla de productos
+Ve a **SQL Editor** (menú lateral) → **New query**, pega esto y dale **Run**:
+
+```sql
+create extension if not exists pgcrypto;
+
+create table if not exists products (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  description text,
+  category text not null,
+  category_name text not null,
+  price numeric(10,2) not null,
+  rating numeric(2,1) default 5.0,
+  reviews integer default 0,
+  badge text,
+  badge_color text,
+  image text,
+  created_at timestamptz default now()
+);
+
+alter table products enable row level security;
+
+-- Cualquiera puede LEER los productos (para que se vean en tu página pública)
+create policy "Public can read products"
+on products for select
+to anon
+using (true);
+
+-- Solo usuarios logueados (tú, desde el panel admin) pueden agregar
+create policy "Authenticated can insert products"
+on products for insert
+to authenticated
+with check (true);
+
+-- Solo usuarios logueados pueden editar
+create policy "Authenticated can update products"
+on products for update
+to authenticated
+using (true);
+
+-- Solo usuarios logueados pueden eliminar
+create policy "Authenticated can delete products"
+on products for delete
+to authenticated
+using (true);
+```
+
+## 3. Crear el bucket de imágenes
+1. Ve a **Storage** (menú lateral) → **New bucket**.
+2. Nómbralo exactamente: `product-images`
+3. Actívalo como **Public bucket** (para que las imágenes se vean en tu página).
+4. Ahora ve otra vez a **SQL Editor** y corre esto para dar permisos:
+
+```sql
+create policy "Public can view product images"
+on storage.objects for select
+to public
+using (bucket_id = 'product-images');
+
+create policy "Authenticated can upload product images"
+on storage.objects for insert
+to authenticated
+with check (bucket_id = 'product-images');
+
+create policy "Authenticated can update product images"
+on storage.objects for update
+to authenticated
+using (bucket_id = 'product-images');
+
+create policy "Authenticated can delete product images"
+on storage.objects for delete
+to authenticated
+using (bucket_id = 'product-images');
+```
+
+## 4. Crear tu usuario de administrador
+1. Ve a **Authentication** → **Users** → **Add user** → **Create new user**.
+2. Pon tu correo y una contraseña segura.
+3. Marca "Auto Confirm User" (para no tener que verificar el correo).
+4. Guarda. Ese correo y contraseña son con los que entrarás a `admin.html`.
+
+> Si quieres agregar más adelante a otra persona que administre la tienda, repites este paso con su correo.
+
+## 5. Conectar tus archivos
+1. Ve a **Settings** → **API**.
+2. Copia el **Project URL** y la **anon public key**.
+3. Abre `index.html` y `admin.html`, busca estas líneas (están casi al inicio de cada uno) y pega tus datos:
+
+```js
+const SUPABASE_URL = "TU_SUPABASE_URL_AQUI";
+const SUPABASE_ANON_KEY = "TU_SUPABASE_ANON_KEY_AQUI";
+```
+
+Debe quedar **igual en ambos archivos**.
+
+## 6. Migrar tus productos actuales (opcional)
+Tu página ya no trae los productos "de fábrica" (Kit Banner, Termo, Mochila, etc.) porque ahora todo viene de la base de datos, que empieza vacía. Tienes dos opciones:
+- Entra a `admin.html` y agrégalos uno por uno con sus nuevas fotos y nombres (recomendado, ya que mencionaste que quieres cambiarlos).
+- Si quieres, dime cuáles productos actuales quieres conservar y te doy el SQL para insertarlos de una vez con sus datos actuales (tendríamos que subir las imágenes a Storage o seguir usando URLs externas para esos).
+
+## 7. Subir los archivos a tu hosting
+Sube `index.html` y `admin.html` al mismo lugar donde tienes tu página ahora (mismo hosting/carpeta). `admin.html` no aparece en ningún menú visible de tu tienda — solo tú accedes escribiendo la dirección directamente, por ejemplo `tudominio.com/admin.html`. Como además pide inicio de sesión, nadie más puede entrar aunque conozca el enlace.

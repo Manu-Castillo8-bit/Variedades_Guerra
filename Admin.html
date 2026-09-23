@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="es" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Admin - VARIEDADES GUERRA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { 500: '#8b5cf6', 600: '#7c3aed', 700: '#6d28d9' },
+                        secondary: { 500: '#ec4899', 600: '#db2777' }
+                    },
+                    fontFamily: { sans: ['Inter', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+    <style>
+        * { transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen antialiased">
+
+    <!-- ============================================ -->
+    <!-- CONFIGURACIÓN DE SUPABASE — EDITA ESTOS DOS VALORES -->
+    <!-- Deben ser IDÉNTICOS a los que pusiste en index.html -->
+    <!-- ============================================ -->
+    <script>
+         const SUPABASE_URL = "sb_publishable_aSXPolW_9fk_35_oWM8sSQ_W3rBrVvQ";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmeXJ5aG9wc3dhaHFkcXBrcXdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxOTMyMjQsImV4cCI6MjEwNTc2OTIyNH0.ivaCXInD7K3tkfv0WgzkJ2Erk-dd8UgNAkwSvXwoHSE";
+        
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    </script>
+
+    <!-- ===================== PANTALLA DE LOGIN ===================== -->
+    <div id="loginScreen" class="min-h-screen flex items-center justify-center px-4">
+        <div class="w-full max-w-sm bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
+            <div class="flex flex-col items-center mb-6">
+                <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-purple-600 via-pink-500 to-amber-400 flex items-center justify-center text-white shadow-lg mb-3">
+                    <i class="fa-solid fa-store text-2xl"></i>
+                </div>
+                <h1 class="text-lg font-black text-slate-900">VARIEDADES GUERRA</h1>
+                <p class="text-xs font-semibold uppercase tracking-widest text-slate-400">Panel Admin</p>
+            </div>
+            <form id="loginForm" class="space-y-3">
+                <div>
+                    <label class="text-xs font-bold text-slate-600 block mb-1">Correo</label>
+                    <input type="email" id="loginEmail" required class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 text-sm">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-600 block mb-1">Contraseña</label>
+                    <input type="password" id="loginPassword" required class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 text-sm">
+                </div>
+                <p id="loginError" class="hidden text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></p>
+                <button type="submit" id="loginBtn" class="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold hover:shadow-lg hover:shadow-purple-500/30 transition-all">
+                    Iniciar sesión
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===================== PANEL PRINCIPAL (oculto hasta iniciar sesión) ===================== -->
+    <div id="adminPanel" class="hidden">
+        <header class="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200">
+            <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-purple-600 via-pink-500 to-amber-400 flex items-center justify-center text-white">
+                        <i class="fa-solid fa-store"></i>
+                    </div>
+                    <span class="font-black text-slate-900">Panel Admin</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span id="userEmailLabel" class="text-xs text-slate-500 hidden sm:inline"></span>
+                    <button id="logoutBtn" class="text-xs font-bold px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors">
+                        <i class="fa-solid fa-right-from-bracket mr-1"></i> Salir
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+
+            <!-- Formulario Agregar / Editar producto -->
+            <section class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                <h2 id="formTitle" class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-circle-plus text-purple-600"></i> Agregar producto
+                </h2>
+                <form id="productForm" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <input type="hidden" id="productId">
+
+                    <div class="sm:col-span-2">
+                        <label class="text-xs font-bold text-slate-600 block mb-1">Nombre del producto *</label>
+                        <input type="text" id="fTitle" required class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 text-sm">
+                    </div>
+
+                    <div class="sm:col-span-2">
+                        <label class="text-xs font-bold text-slate-600 block mb-1">Descripción</label>
+                        <textarea id="fDescription" rows="2" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 text-sm"></textarea>
+                    </div>
+
+                    <div>
+                        <label class="text-xs font-bold text-slate-600 block mb-1">Categoría *</label>
+                        <select id="fCategory" required class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 text-sm">
+                            <option value="cumpleanos">🎂 Cumpleaños</option>
+                            <option value="personales">🕶️ Artículos Personales</option>
+                            <option value="especiales">🎁 Ocasiones Especiales</option>
+                            <option value="escolares">📚 Útiles Escolares</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="text-xs font-bold text-slate-600 block mb-1">Precio (USD) *</label>
+                        <input type="number" id="fPrice" step="0.01" min="0" required class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 text-sm">
+                    </div>
+
+                    <div>
+                        <label class="text-xs font-bold text-slate-600 block mb-1">Insignia (opcional)</label>
+                        <input type="text" id="fBadge" placeholder="Ej: Oferta, Nuevo, Más Vendido" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 text-sm">
+                    </div>
+
+                    <div>
+                        <label class="text-xs font-bold text-slate-600 block mb-1">Color de insignia</label>
+                        <select id="fBadgeColor" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 text-sm">
+                            <option value="bg-pink-500">Rosa</option>
+                            <option value="bg-purple-500">Morado</option>
+                            <option value="bg-emerald-500">Verde</option>
+                            <option value="bg-indigo-500">Índigo</option>
+                            <option value="bg-amber-500">Ámbar</option>
+                            <option value="bg-rose-500">Rojo</option>
+                            <option value="bg-blue-600">Azul</option>
+                        </select>
+                    </div>
+
+                    <div class="sm:col-span-2">
+                        <label class="text-xs font-bold text-slate-600 block mb-1">Imagen del producto *</label>
+                        <input type="file" id="fImageFile" accept="image/*" class="w-full text-sm">
+                        <div class="flex items-center gap-3 mt-2">
+                            <img id="fImagePreview" class="hidden w-20 h-20 rounded-lg object-cover border border-slate-200">
+                            <span id="fImageStatus" class="text-xs text-slate-400"></span>
+                        </div>
+                    </div>
+
+                    <div class="sm:col-span-2 flex items-center gap-3 pt-2">
+                        <button type="submit" id="submitBtn" class="px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold hover:shadow-lg hover:shadow-purple-500/30 transition-all">
+                            <i class="fa-solid fa-floppy-disk mr-1"></i> Guardar producto
+                        </button>
+                        <button type="button" id="cancelEditBtn" class="hidden px-6 py-3 rounded-xl bg-slate-100 text-slate-600 font-bold hover:bg-slate-200 transition-all">
+                            Cancelar edición
+                        </button>
+                        <span id="formStatus" class="text-xs font-medium"></span>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Lista de productos existentes -->
+            <section>
+                <h2 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-boxes-stacked text-purple-600"></i> Productos publicados
+                    <span id="productCount" class="text-xs font-medium text-slate-400"></span>
+                </h2>
+                <div id="adminProductsList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+                <p id="adminEmptyState" class="hidden text-center text-sm text-slate-400 py-10">Todavía no hay productos. Agrega el primero arriba. 👆</p>
+            </section>
+        </main>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 flex items-center gap-3 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-xl pointer-events-none">
+        <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
+        <span id="toastMessage" class="text-sm font-medium"></span>
+    </div>
+
+    <script>
+        const categoryNames = {
+            cumpleanos: 'Cumpleaños',
+            personales: 'Artículos Personales',
+            especiales: 'Ocasiones Especiales',
+            escolares: 'Útiles Escolares'
+        };
+
+        let editingId = null;
+        let pendingImageFile = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            checkSession();
+            setupAuthListeners();
+            setupFormListeners();
+        });
+
+        // ---------- SESIÓN / LOGIN ----------
+        async function checkSession() {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session) showPanel(session);
+            else showLogin();
+        }
+
+        function setupAuthListeners() {
+            document.getElementById('loginForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const email = document.getElementById('loginEmail').value;
+                const password = document.getElementById('loginPassword').value;
+                const btn = document.getElementById('loginBtn');
+                const errorEl = document.getElementById('loginError');
+                errorEl.classList.add('hidden');
+                btn.disabled = true;
+                btn.innerText = 'Ingresando...';
+
+                const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+                btn.disabled = false;
+                btn.innerText = 'Iniciar sesión';
+
+                if (error) {
+                    errorEl.innerText = 'Correo o contraseña incorrectos.';
+                    errorEl.classList.remove('hidden');
+                    return;
+                }
+                showPanel(data.session);
+            });
+
+            document.getElementById('logoutBtn').addEventListener('click', async () => {
+                await supabaseClient.auth.signOut();
+                showLogin();
+            });
+        }
+
+        function showLogin() {
+            document.getElementById('loginScreen').classList.remove('hidden');
+            document.getElementById('adminPanel').classList.add('hidden');
+        }
+
+        function showPanel(session) {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('adminPanel').classList.remove('hidden');
+            document.getElementById('userEmailLabel').innerText = session.user.email;
+            loadAdminProducts();
+        }
+
+        // ---------- FORMULARIO ----------
+        function setupFormListeners() {
+            document.getElementById('fImageFile').addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                pendingImageFile = file;
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    const img = document.getElementById('fImagePreview');
+                    img.src = ev.target.result;
+                    img.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+                document.getElementById('fImageStatus').innerText = file.name;
+            });
+
+            document.getElementById('cancelEditBtn').addEventListener('click', resetForm);
+            document.getElementById('productForm').addEventListener('submit', handleSubmit);
+        }
+
+        function resetForm() {
+            editingId = null;
+            pendingImageFile = null;
+            document.getElementById('productForm').reset();
+            document.getElementById('productId').value = '';
+            document.getElementById('fImagePreview').classList.add('hidden');
+            document.getElementById('fImageStatus').innerText = '';
+            document.getElementById('formTitle').innerHTML = '<i class="fa-solid fa-circle-plus text-purple-600"></i> Agregar producto';
+            document.getElementById('submitBtn').innerHTML = '<i class="fa-solid fa-floppy-disk mr-1"></i> Guardar producto';
+            document.getElementById('cancelEditBtn').classList.add('hidden');
+        }
+
+        async function handleSubmit(e) {
+            e.preventDefault();
+            const statusEl = document.getElementById('formStatus');
+            const submitBtn = document.getElementById('submitBtn');
+            const title = document.getElementById('fTitle').value.trim();
+            const description = document.getElementById('fDescription').value.trim();
+            const category = document.getElementById('fCategory').value;
+            const price = parseFloat(document.getElementById('fPrice').value);
+            const badge = document.getElementById('fBadge').value.trim() || null;
+            const badgeColor = document.getElementById('fBadgeColor').value;
+
+            if (!editingId && !pendingImageFile) {
+                statusEl.innerText = 'Selecciona una imagen para el producto.';
+                statusEl.className = 'text-xs font-medium text-red-600';
+                return;
+            }
+
+            submitBtn.disabled = true;
+            statusEl.innerText = 'Guardando...';
+            statusEl.className = 'text-xs font-medium text-slate-500';
+
+            try {
+                let imageUrl = null;
+
+                if (pendingImageFile) {
+                    imageUrl = await uploadImage(pendingImageFile);
+                }
+
+                const payload = {
+                    title,
+                    description,
+                    category,
+                    category_name: categoryNames[category],
+                    price,
+                    badge,
+                    badge_color: badgeColor
+                };
+                if (imageUrl) payload.image = imageUrl;
+
+                if (editingId) {
+                    const { error } = await supabaseClient.from('products').update(payload).eq('id', editingId);
+                    if (error) throw error;
+                    showToast('Producto actualizado ✅');
+                } else {
+                    const { error } = await supabaseClient.from('products').insert(payload);
+                    if (error) throw error;
+                    showToast('Producto agregado ✅');
+                }
+
+                resetForm();
+                statusEl.innerText = '';
+                loadAdminProducts();
+            } catch (err) {
+                console.error(err);
+                statusEl.innerText = 'Ocurrió un error al guardar. Revisa la consola.';
+                statusEl.className = 'text-xs font-medium text-red-600';
+            } finally {
+                submitBtn.disabled = false;
+            }
+        }
+
+        async function uploadImage(file) {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
+            const { error: uploadError } = await supabaseClient.storage
+                .from('product-images')
+                .upload(fileName, file);
+            if (uploadError) throw uploadError;
+
+            const { data } = supabaseClient.storage.from('product-images').getPublicUrl(fileName);
+            return data.publicUrl;
+        }
+
+        // ---------- LISTADO / EDITAR / ELIMINAR ----------
+        async function loadAdminProducts() {
+            const list = document.getElementById('adminProductsList');
+            const empty = document.getElementById('adminEmptyState');
+            const countEl = document.getElementById('productCount');
+
+            const { data, error } = await supabaseClient
+                .from('products')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                list.innerHTML = `<p class="text-sm text-red-500 col-span-full">Error cargando productos.</p>`;
+                return;
+            }
+
+            countEl.innerText = `(${data.length})`;
+
+            if (data.length === 0) {
+                list.innerHTML = '';
+                empty.classList.remove('hidden');
+                return;
+            }
+            empty.classList.add('hidden');
+
+            list.innerHTML = data.map(p => `
+                <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                    <img src="${p.image}" alt="${p.title}" class="w-full h-36 object-cover">
+                    <div class="p-4">
+                        <span class="text-[10px] font-bold text-purple-600 uppercase tracking-wider">${p.category_name}</span>
+                        <h3 class="font-bold text-slate-900 text-sm mt-0.5 line-clamp-2">${p.title}</h3>
+                        <p class="text-sm font-black text-slate-900 mt-1">$${Number(p.price).toFixed(2)}</p>
+                        <div class="flex items-center gap-2 mt-3">
+                            <button onclick='editProduct(${JSON.stringify(p)})' class="flex-1 text-xs font-bold py-2 rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors">
+                                <i class="fa-solid fa-pen mr-1"></i> Editar
+                            </button>
+                            <button onclick="deleteProduct('${p.id}', '${p.title.replace(/'/g, "\\'")}')" class="flex-1 text-xs font-bold py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
+                                <i class="fa-solid fa-trash mr-1"></i> Eliminar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function editProduct(p) {
+            editingId = p.id;
+            pendingImageFile = null;
+            document.getElementById('productId').value = p.id;
+            document.getElementById('fTitle').value = p.title;
+            document.getElementById('fDescription').value = p.description || '';
+            document.getElementById('fCategory').value = p.category;
+            document.getElementById('fPrice').value = p.price;
+            document.getElementById('fBadge').value = p.badge || '';
+            document.getElementById('fBadgeColor').value = p.badge_color || 'bg-purple-500';
+            const img = document.getElementById('fImagePreview');
+            img.src = p.image;
+            img.classList.remove('hidden');
+            document.getElementById('fImageStatus').innerText = 'Imagen actual (sube una nueva solo si quieres cambiarla)';
+
+            document.getElementById('formTitle').innerHTML = '<i class="fa-solid fa-pen text-purple-600"></i> Editando: ' + p.title;
+            document.getElementById('submitBtn').innerHTML = '<i class="fa-solid fa-floppy-disk mr-1"></i> Guardar cambios';
+            document.getElementById('cancelEditBtn').classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        async function deleteProduct(id, title) {
+            if (!confirm(`¿Eliminar "${title}"? Esta acción no se puede deshacer.`)) return;
+            const { error } = await supabaseClient.from('products').delete().eq('id', id);
+            if (error) {
+                showToast('Error al eliminar', true);
+                return;
+            }
+            showToast('Producto eliminado 🗑️');
+            loadAdminProducts();
+        }
+
+        function showToast(msg, isError = false) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMessage').innerText = msg;
+            document.getElementById('toastIcon').className = isError
+                ? 'fa-solid fa-circle-exclamation text-red-400 text-lg'
+                : 'fa-solid fa-circle-check text-emerald-400 text-lg';
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 3000);
+        }
+    </script>
+</body>
+</html>

@@ -37,6 +37,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
     <style>
         * {
             transition: background-color 0.25s ease, border-color 0.25s ease, color 0.15s ease;
@@ -175,7 +177,7 @@
                                 Celebra momentos inolvidables con la mejor decoración
                             </h1>
                             <p class="text-slate-300 text-sm sm:text-base">
-                                Globos, serpentinas, velas temáticas y paquetes completos para tus eventos.
+                                Globos, serpentinas, velas temáticas y paquetes de globos para tus eventos.
                             </p>
                             <div class="pt-2 flex flex-wrap gap-3">
                                 <button onclick="filterCategory('cumpleanos')" class="px-6 py-3 rounded-xl bg-gradient-to-r from-pink-500 to-purple-600 text-white font-semibold hover:shadow-lg hover:shadow-pink-500/30 hover:scale-105 active:scale-95 transition-all">
@@ -198,7 +200,7 @@
                                 Todo lo que necesitas para un año escolar genial
                             </h2>
                             <p class="text-slate-300 text-sm sm:text-base">
-                                Cuadernos de alta calidad, mochilas ergonómicas y papelería variada.
+                                útiles escolares de alta calidad, y productos variados.
                             </p>
                             <div class="pt-2 flex flex-wrap gap-3">
                                 <button onclick="filterCategory('escolares')" class="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white font-semibold hover:shadow-lg hover:shadow-amber-500/30 hover:scale-105 active:scale-95 transition-all">
@@ -221,7 +223,7 @@
                                 Sorprende a tus seres queridos en cada ocasión
                             </h2>
                             <p class="text-slate-300 text-sm sm:text-base">
-                                Empaques personalizados, arreglos de regalo y detalles inolvidables.
+                                Bolsas de regalo, y detalles preciosos.
                             </p>
                             <div class="pt-2 flex flex-wrap gap-3">
                                 <button onclick="filterCategory('especiales')" class="px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold hover:shadow-lg hover:shadow-indigo-500/30 hover:scale-105 active:scale-95 transition-all">
@@ -417,33 +419,66 @@
 
     <!-- JavaScript Lógico -->
     <script>
-        const products = [
-            { id: 1, title: "Kit Banner y Serpentinas Neón", category: "cumpleanos", categoryName: "Cumpleaños", price: 18.99, rating: 4.9, reviews: 42, badge: "Más Vendido", badgeColor: "bg-pink-500", image: "https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&w=600&q=80" },
-            { id: 2, title: "Set de 50 Globos Cromados Multicolores", category: "cumpleanos", categoryName: "Cumpleaños", price: 12.50, rating: 4.7, reviews: 18, badge: "Oferta", badgeColor: "bg-purple-500", image: "https://images.unsplash.com/photo-1527529482837-4698179dc6ce?auto=format&fit=crop&w=600&q=80" },
-            { id: 3, title: "Velas Numéricas Chispeantes Deluxe", category: "cumpleanos", categoryName: "Cumpleaños", price: 4.99, rating: 4.8, reviews: 29, badge: null, image: "https://images.unsplash.com/photo-1558636508-e0db3814bd1d?auto=format&fit=crop&w=600&q=80" },
-            { id: 4, title: "Organizador Cosmetiquero Transparente", category: "personales", categoryName: "Artículos Personales", price: 14.20, rating: 4.6, reviews: 35, badge: "Nuevo", badgeColor: "bg-emerald-500", image: "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=600&q=80" },
-            { id: 5, title: "Termo de Acero Inoxidable 1L", category: "personales", categoryName: "Artículos Personales", price: 19.99, rating: 4.9, reviews: 64, badge: "Popular", badgeColor: "bg-indigo-500", image: "https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&w=600&q=80" },
-            { id: 6, title: "Porta Pasaporte y Billetera de Viaje", category: "personales", categoryName: "Artículos Personales", price: 11.50, rating: 4.5, reviews: 14, badge: null, image: "https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=600&q=80" },
-            { id: 7, title: "Caja de Regalo Sorpresa Personalizable", category: "especiales", categoryName: "Ocasiones Especiales", price: 22.00, rating: 5.0, reviews: 51, badge: "Destacado", badgeColor: "bg-rose-500", image: "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=600&q=80" },
-            { id: 8, title: "Set de Velas Aromáticas & Difusor", category: "especiales", categoryName: "Ocasiones Especiales", price: 21.00, rating: 4.8, reviews: 23, badge: null, image: "https://images.unsplash.com/photo-1603006905003-be475563bc59?auto=format&fit=crop&w=600&q=80" },
-            { id: 9, title: "Álbum de Fotos y Recuerdos Especiales", category: "especiales", categoryName: "Ocasiones Especiales", price: 16.50, rating: 4.7, reviews: 31, badge: "Descuento", badgeColor: "bg-amber-500", image: "https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=600&q=80" },
-            { id: 10, title: "Mochila Ergonómica Multibolsillos", category: "escolares", categoryName: "Útiles Escolares", price: 34.99, rating: 4.9, reviews: 87, badge: "Top Escolar", badgeColor: "bg-blue-600", image: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=600&q=80" },
-            { id: 11, title: "Set de Plumones Punta Pincel (36 Colores)", category: "escolares", categoryName: "Útiles Escolares", price: 15.99, rating: 4.8, reviews: 45, badge: "Oferta", badgeColor: "bg-purple-500", image: "https://images.unsplash.com/photo-1585336261026-8f5785782ed6?auto=format&fit=crop&w=600&q=80" },
-            { id: 12, title: "Cuaderno Profesional Pasta Dura A5", category: "escolares", categoryName: "Útiles Escolares", price: 6.50, rating: 4.6, reviews: 19, badge: null, image: "https://images.unsplash.com/photo-1531346878377-a5be20888e57?auto=format&fit=crop&w=600&q=80" }
-        ];
+        // ============================================
+        // CONFIGURACIÓN DE SUPABASE — EDITA ESTOS DOS VALORES
+        // Los encuentras en tu proyecto de Supabase: Settings > API
+        // ============================================
+        const SUPABASE_URL = "sb_publishable_aSXPolW_9fk_35_oWM8sSQ_W3rBrVvQ";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmeXJ5aG9wc3dhaHFkcXBrcXdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxOTMyMjQsImV4cCI6MjEwNTc2OTIyNH0.ivaCXInD7K3tkfv0WgzkJ2Erk-dd8UgNAkwSvXwoHSE";
 
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let products = [];
         let cart = [];
         let activeCategory = 'todos';
         let searchQuery = '';
         let currentSlide = 0;
         let slideInterval = null;
 
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             initTheme();
-            renderProducts();
             initCarousel();
             setupEventListeners();
+            await loadProducts();
         });
+
+        async function loadProducts() {
+            const grid = document.getElementById('productsGrid');
+            grid.innerHTML = `<div class="col-span-full text-center py-16 text-slate-400">
+                <i class="fa-solid fa-spinner fa-spin text-3xl mb-3"></i>
+                <p class="text-sm font-medium">Cargando productos...</p>
+            </div>`;
+
+            const { data, error } = await supabaseClient
+                .from('products')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.error('Error cargando productos:', error);
+                grid.innerHTML = `<div class="col-span-full text-center py-16 text-red-400">
+                    <i class="fa-solid fa-triangle-exclamation text-3xl mb-3"></i>
+                    <p class="text-sm font-medium">No se pudieron cargar los productos. Intenta más tarde.</p>
+                </div>`;
+                return;
+            }
+
+            products = (data || []).map(p => ({
+                id: p.id,
+                title: p.title,
+                description: p.description,
+                category: p.category,
+                categoryName: p.category_name,
+                price: Number(p.price),
+                rating: Number(p.rating || 5),
+                reviews: p.reviews || 0,
+                badge: p.badge,
+                badgeColor: p.badge_color || 'bg-purple-500',
+                image: p.image
+            }));
+
+            renderProducts();
+        }
 
         function initTheme() {
             const savedTheme = localStorage.getItem('theme');
@@ -542,6 +577,7 @@
                         <div class="p-5">
                             <span class="text-[11px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider">${product.categoryName}</span>
                             <h3 class="font-bold text-slate-900 dark:text-white mt-1 text-base line-clamp-2">${product.title}</h3>
+                            ${product.description ? `<p class="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">${product.description}</p>` : ''}
                             <div class="flex items-center gap-1.5 mt-2 text-amber-400 text-xs">
                                 <i class="fa-solid fa-star"></i>
                                 <span class="text-slate-700 dark:text-slate-300 font-bold">${product.rating}</span>
@@ -551,7 +587,7 @@
                     </div>
                     <div class="px-5 pb-5 pt-0 flex items-center justify-between">
                         <span class="text-lg font-black text-slate-900 dark:text-white">$${product.price.toFixed(2)}</span>
-                        <button onclick="addToCart(${product.id})" class="p-3 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-300 hover:bg-purple-600 hover:text-white transition-all">
+                        <button onclick="addToCart('${product.id}')" class="p-3 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-300 hover:bg-purple-600 hover:text-white transition-all">
                             <i class="fa-solid fa-cart-plus text-base"></i>
                         </button>
                     </div>
@@ -607,9 +643,9 @@
                         <h4 class="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">${item.title}</h4>
                         <span class="text-xs font-extrabold text-purple-600 dark:text-purple-400">$${item.price.toFixed(2)}</span>
                         <div class="flex items-center gap-2 mt-2">
-                            <button onclick="updateQuantity(${item.id}, -1)" class="w-6 h-6 rounded bg-white dark:bg-slate-700 text-xs">-</button>
+                            <button onclick="updateQuantity('${item.id}', -1)" class="w-6 h-6 rounded bg-white dark:bg-slate-700 text-xs">-</button>
                             <span class="text-xs font-bold">${item.quantity}</span>
-                            <button onclick="updateQuantity(${item.id}, 1)" class="w-6 h-6 rounded bg-white dark:bg-slate-700 text-xs">+</button>
+                            <button onclick="updateQuantity('${item.id}', 1)" class="w-6 h-6 rounded bg-white dark:bg-slate-700 text-xs">+</button>
                         </div>
                     </div>
                 </div>
