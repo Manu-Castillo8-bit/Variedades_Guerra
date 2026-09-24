@@ -26,6 +26,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
     <style>
         * { transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease; }
+        input[type="password"]::-ms-reveal,
+        input[type="password"]::-ms-clear { display: none; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans min-h-screen antialiased">
@@ -58,9 +60,9 @@
                 <div>
                     <label class="text-xs font-bold text-slate-600 block mb-1">Contraseña</label>
                     <div class="relative">
-                        <input type="password" id="loginPassword" required class="w-full px-3 py-2.5 pr-10 rounded-xl border border-slate-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 text-sm">
-                        <button type="button" id="togglePasswordBtn" tabindex="-1" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
-                            <i class="fa-solid fa-eye text-sm"></i>
+                        <input type="password" id="loginPassword" required autocomplete="current-password" class="w-full px-3 py-2.5 pr-11 rounded-xl border border-slate-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 text-sm">
+                        <button type="button" id="togglePasswordBtn" tabindex="-1" class="absolute z-10 right-0 top-0 h-full w-10 flex items-center justify-center text-slate-500 hover:text-purple-600 transition-colors">
+                            <i class="fa-solid fa-eye text-base"></i>
                         </button>
                     </div>
                 </div>
@@ -192,6 +194,7 @@
         };
 
         let editingId = null;
+        let adminProducts = [];
         let pendingImageFile = null;
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -386,6 +389,7 @@
             }
 
             countEl.innerText = `(${data.length})`;
+            adminProducts = data;
 
             if (data.length === 0) {
                 list.innerHTML = '';
@@ -402,10 +406,10 @@
                         <h3 class="font-bold text-slate-900 text-sm mt-0.5 line-clamp-2">${p.title}</h3>
                         <p class="text-sm font-black text-slate-900 mt-1">$${Number(p.price).toFixed(2)}</p>
                         <div class="flex items-center gap-2 mt-3">
-                            <button onclick='editProduct(${JSON.stringify(p)})' class="flex-1 text-xs font-bold py-2 rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors">
+                            <button data-action="edit" data-id="${p.id}" class="flex-1 text-xs font-bold py-2 rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors">
                                 <i class="fa-solid fa-pen mr-1"></i> Editar
                             </button>
-                            <button onclick="deleteProduct('${p.id}', '${p.title.replace(/'/g, "\\'")}')" class="flex-1 text-xs font-bold py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
+                            <button data-action="delete" data-id="${p.id}" class="flex-1 text-xs font-bold py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
                                 <i class="fa-solid fa-trash mr-1"></i> Eliminar
                             </button>
                         </div>
@@ -413,6 +417,22 @@
                 </div>
             `).join('');
         }
+
+        // Delegación de eventos: un solo listener maneja todos los botones Editar/Eliminar,
+        // incluso los que se crean después de recargar la lista.
+        document.getElementById('adminProductsList').addEventListener('click', (e) => {
+            const btn = e.target.closest('button[data-action]');
+            if (!btn) return;
+            const id = btn.getAttribute('data-id');
+            const product = adminProducts.find(p => String(p.id) === String(id));
+            if (!product) return;
+
+            if (btn.dataset.action === 'edit') {
+                editProduct(product);
+            } else if (btn.dataset.action === 'delete') {
+                deleteProduct(product.id, product.title);
+            }
+        });
 
         function editProduct(p) {
             editingId = p.id;
