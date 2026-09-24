@@ -54,8 +54,6 @@
 </head>
 <body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans min-h-screen flex flex-col antialiased selection:bg-purple-500 selection:text-white">
 
-    
-
     <!-- Encabezado y Navegación Principal -->
     <header class="sticky top-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -108,26 +106,6 @@
                     </button>
                 </div>
             </div>
-
-            <!-- Navegación de Categorías Solicitadas -->
-           <!-- <nav class="hidden md:flex items-center justify-center gap-1 lg:gap-2 py-3 border-t border-slate-100 dark:border-slate-800/60">
-                <button onclick="filterCategory('cumpleanos')" class="nav-link text-sm font-semibold text-slate-700 dark:text-slate-200 hover:text-purple-600 dark:hover:text-purple-400 px-4 py-2 rounded-lg hover:bg-purple-50 dark:hover:bg-slate-800/80 transition-all flex items-center gap-2">
-                    <i class="fa-solid fa-cake-candles text-pink-500"></i>
-                    Cumpleaños
-                </button>
-                <button onclick="filterCategory('personales')" class="nav-link text-sm font-semibold text-slate-700 dark:text-slate-200 hover:text-purple-600 dark:hover:text-purple-400 px-4 py-2 rounded-lg hover:bg-purple-50 dark:hover:bg-slate-800/80 transition-all flex items-center gap-2">
-                    <i class="fa-solid fa-glasses text-purple-500"></i>
-                    Artículos Personales
-                </button>
-                <button onclick="filterCategory('especiales')" class="nav-link text-sm font-semibold text-slate-700 dark:text-slate-200 hover:text-purple-600 dark:hover:text-purple-400 px-4 py-2 rounded-lg hover:bg-purple-50 dark:hover:bg-slate-800/80 transition-all flex items-center gap-2">
-                    <i class="fa-solid fa-gift text-indigo-500"></i>
-                    Artículos para Ocasiones Especiales
-                </button>
-                <button onclick="filterCategory('escolares')" class="nav-link text-sm font-semibold text-slate-700 dark:text-slate-200 hover:text-purple-600 dark:hover:text-purple-400 px-4 py-2 rounded-lg hover:bg-purple-50 dark:hover:bg-slate-800/80 transition-all flex items-center gap-2">
-                    <i class="fa-solid fa-pen-ruler text-amber-500"></i>
-                    Útiles Escolares
-                </button>
-            </nav>-->
         </div>
 
         <!-- Menú Desplegable Móvil -->
@@ -137,24 +115,8 @@
                        class="w-full pl-10 pr-4 py-2 rounded-xl text-sm bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500 text-slate-800 dark:text-slate-100">
                 <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
             </div>
-            <div class="flex flex-col space-y-1 font-medium text-sm">
-                <button onclick="filterCategory('cumpleanos'); toggleMobileMenu()" class="w-full text-left px-3 py-2.5 rounded-lg hover:bg-purple-50 dark:hover:bg-slate-800 flex items-center gap-3">
-                    <i class="fa-solid fa-cake-candles text-pink-500 w-5"></i>
-                    Cumpleaños
-                </button>
-                <button onclick="filterCategory('personales'); toggleMobileMenu()" class="w-full text-left px-3 py-2.5 rounded-lg hover:bg-purple-50 dark:hover:bg-slate-800 flex items-center gap-3">
-                    <i class="fa-solid fa-glasses text-purple-500 w-5"></i>
-                    Artículos Personales
-                </button>
-                <button onclick="filterCategory('especiales'); toggleMobileMenu()" class="w-full text-left px-3 py-2.5 rounded-lg hover:bg-purple-50 dark:hover:bg-slate-800 flex items-center gap-3">
-                    <i class="fa-solid fa-gift text-indigo-500 w-5"></i>
-                    Artículos para Ocasiones Especiales
-                </button>
-                <button onclick="filterCategory('escolares'); toggleMobileMenu()" class="w-full text-left px-3 py-2.5 rounded-lg hover:bg-purple-50 dark:hover:bg-slate-800 flex items-center gap-3">
-                    <i class="fa-solid fa-pen-ruler text-amber-500 w-5"></i>
-                    Útiles Escolares
-                </button>
-            </div>
+            <!-- Categorías dinámicas (se llenan desde Supabase) -->
+            <div id="mobileCategories" class="flex flex-col space-y-1 font-medium text-sm"></div>
         </div>
     </header>
 
@@ -180,7 +142,7 @@
                                 Globos, serpentinas, velas temáticas y paquetes de globos para tus eventos.
                             </p>
                             <div class="pt-2 flex flex-wrap gap-3">
-                                <button onclick="filterCategory('cumpleanos')" class="px-6 py-3 rounded-xl bg-gradient-to-r from-pink-500 to-purple-600 text-white font-semibold hover:shadow-lg hover:shadow-pink-500/30 hover:scale-105 active:scale-95 transition-all">
+                                <button data-hero-cat="cumpleanos" onclick="filterCategory('cumpleanos')" class="px-6 py-3 rounded-xl bg-gradient-to-r from-pink-500 to-purple-600 text-white font-semibold hover:shadow-lg hover:shadow-pink-500/30 hover:scale-105 active:scale-95 transition-all">
                                     Explorar Cumpleaños
                                 </button>
                             </div>
@@ -203,7 +165,7 @@
                                 útiles escolares de alta calidad, y productos variados.
                             </p>
                             <div class="pt-2 flex flex-wrap gap-3">
-                                <button onclick="filterCategory('escolares')" class="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white font-semibold hover:shadow-lg hover:shadow-amber-500/30 hover:scale-105 active:scale-95 transition-all">
+                                <button data-hero-cat="escolares" onclick="filterCategory('escolares')" class="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white font-semibold hover:shadow-lg hover:shadow-amber-500/30 hover:scale-105 active:scale-95 transition-all">
                                     Ver Útiles Escolares
                                 </button>
                             </div>
@@ -226,7 +188,7 @@
                                 Bolsas de regalo, y detalles preciosos.
                             </p>
                             <div class="pt-2 flex flex-wrap gap-3">
-                                <button onclick="filterCategory('especiales')" class="px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold hover:shadow-lg hover:shadow-indigo-500/30 hover:scale-105 active:scale-95 transition-all">
+                                <button data-hero-cat="especiales" onclick="filterCategory('especiales')" class="px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold hover:shadow-lg hover:shadow-indigo-500/30 hover:scale-105 active:scale-95 transition-all">
                                     Regalos Especiales
                                 </button>
                             </div>
@@ -264,22 +226,10 @@
                     </h2>
                 </div>
 
-                <!-- Filtros -->
-                <div class="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 no-scrollbar">
+                <!-- Filtros (dinámicos desde Supabase) -->
+                <div id="filtersBar" class="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 no-scrollbar">
                     <button onclick="filterCategory('todos')" class="filter-btn active px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all bg-purple-600 text-white shadow-md shadow-purple-500/20" data-category="todos">
                         Todos
-                    </button>
-                    <button onclick="filterCategory('cumpleanos')" class="filter-btn px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700" data-category="cumpleanos">
-                        🎂 Cumpleaños
-                    </button>
-                    <button onclick="filterCategory('personales')" class="filter-btn px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700" data-category="personales">
-                        🕶️ Artículos Personales
-                    </button>
-                    <button onclick="filterCategory('especiales')" class="filter-btn px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700" data-category="especiales">
-                        🎁 Ocasiones Especiales
-                    </button>
-                    <button onclick="filterCategory('escolares')" class="filter-btn px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700" data-category="escolares">
-                        📚 Útiles Escolares
                     </button>
                 </div>
             </div>
@@ -303,13 +253,11 @@
 
     <!-- Carrito Lateral (Drawer) -->
     <div id="cartDrawer" class="fixed inset-0 z-50 overflow-hidden pointer-events-none transition-all duration-300">
-        <!-- Overlay (Solucionado para evitar bloqueo de clics) -->
         <div id="cartOverlay" class="absolute inset-0 bg-slate-950/60 backdrop-blur-xs opacity-0 transition-opacity duration-300 pointer-events-none"></div>
 
         <div class="fixed inset-y-0 right-0 max-w-full flex pl-10">
             <div id="cartContent" class="w-screen max-w-md bg-white dark:bg-slate-900 shadow-2xl flex flex-col transform translate-x-full transition-transform duration-300 border-l border-slate-200 dark:border-slate-800 pointer-events-auto">
                 
-                <!-- Encabezado Carrito -->
                 <div class="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
                     <div class="flex items-center gap-3">
                         <div class="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-300 flex items-center justify-center">
@@ -322,10 +270,8 @@
                     </button>
                 </div>
 
-                <!-- Lista de Productos en Carrito -->
                 <div id="cartItemsList" class="flex-grow overflow-y-auto p-5 space-y-4"></div>
 
-                <!-- Pie de Carrito con WhatsApp -->
                 <div class="p-5 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 space-y-4">
                     <div class="space-y-2 text-sm">
                         <div class="flex justify-between text-slate-500 dark:text-slate-400">
@@ -369,30 +315,19 @@
                        Venta de artículos de cumpleaños, accesorios, detalles personales y útiles escolares.
                     </p>
                     <div class="flex items-center gap-3 pt-2">
-                    <!--    <a href="#" aria-label="Facebook" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-purple-600 text-slate-400 hover:text-white flex items-center justify-center transition-colors">
-                            <i class="fa-brands fa-facebook-f"></i>
-                        </a>
-                <a href="#" aria-label="Instagram" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-pink-600 text-slate-400 hover:text-white flex items-center justify-center transition-colors">
-                            <i class="fa-brands fa-instagram"></i>
-                        </a> -->
                       <a href="https://wa.me/50378912255?text=Hola,%20me%20gustaría%20hacer%20una%20consulta" 
-   target="_blank" 
-   rel="noopener noreferrer"
-   aria-label="Contactar por WhatsApp"
-   class="w-9 h-9 rounded-lg bg-slate-800 hover:bg-emerald-600 text-slate-400 hover:text-white flex items-center justify-center transition-colors">
-    <i class="fa-brands fa-whatsapp text-lg"></i>
-</a>
+                         target="_blank" 
+                         rel="noopener noreferrer"
+                         aria-label="Contactar por WhatsApp"
+                         class="w-9 h-9 rounded-lg bg-slate-800 hover:bg-emerald-600 text-slate-400 hover:text-white flex items-center justify-center transition-colors">
+                          <i class="fa-brands fa-whatsapp text-lg"></i>
+                      </a>
                     </div>
                 </div>
 
                 <div>
                     <h4 class="text-sm font-bold text-white uppercase tracking-wider mb-4">Categorías</h4>
-                    <ul class="space-y-2 text-xs">
-                        <li><button onclick="filterCategory('cumpleanos')" class="hover:text-purple-400 transition-colors">Artículos de Cumpleaños</button></li>
-                        <li><button onclick="filterCategory('personales')" class="hover:text-purple-400 transition-colors">Artículos Personales</button></li>
-                        <li><button onclick="filterCategory('especiales')" class="hover:text-purple-400 transition-colors">Ocasiones Especiales</button></li>
-                        <li><button onclick="filterCategory('escolares')" class="hover:text-purple-400 transition-colors">Útiles Escolares</button></li>
-                    </ul>
+                    <ul id="footerCategories" class="space-y-2 text-xs"></ul>
                 </div>
 
                 <div>
@@ -420,42 +355,52 @@
     <!-- JavaScript Lógico -->
     <script>
         // ============================================
-        // CONFIGURACIÓN DE SUPABASE — EDITA ESTOS DOS VALORES
-        // Los encuentras en tu proyecto de Supabase: Settings > API
+        // CONFIGURACIÓN DE SUPABASE
         // ============================================
         const SUPABASE_URL = "https://bfyryhopswahqdqpkqwc.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmeXJ5aG9wc3dhaHFkcXBrcXdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxOTMyMjQsImV4cCI6MjEwNTc2OTIyNH0.ivaCXInD7K3tkfv0WgzkJ2Erk-dd8UgNAkwSvXwoHSE";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmeXJ5aG9wc3dhaHFkcXBrcXdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxOTMyMjQsImV4cCI6MjEwNTc2OTIyNH0.ivaCXInD7K3tkfv0WgzkJ2Erk-dd8UgNAkwSvXwoHSE";
 
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let products = [];
+        let categories = [];
         let cart = [];
         let activeCategory = 'todos';
         let searchQuery = '';
         let currentSlide = 0;
         let slideInterval = null;
 
+        const BTN_ACTIVE = "filter-btn active px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all bg-purple-600 text-white shadow-md shadow-purple-500/20";
+        const BTN_INACTIVE = "filter-btn px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700";
+
+        function esc(s) {
+            return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
         document.addEventListener('DOMContentLoaded', async () => {
             initTheme();
             initCarousel();
             setupEventListeners();
-            await loadProducts();
+            await loadCatalog();
         });
 
-        async function loadProducts() {
+        // Carga categorías habilitadas + productos habilitados
+        async function loadCatalog() {
             const grid = document.getElementById('productsGrid');
             grid.innerHTML = `<div class="col-span-full text-center py-16 text-slate-400">
                 <i class="fa-solid fa-spinner fa-spin text-3xl mb-3"></i>
                 <p class="text-sm font-medium">Cargando productos...</p>
             </div>`;
 
-            const { data, error } = await supabaseClient
-                .from('products')
-                .select('*')
-                .order('created_at', { ascending: false });
+            const [catRes, prodRes] = await Promise.all([
+                supabaseClient.from('categories').select('*').eq('enabled', true)
+                    .order('sort_order', { ascending: true }).order('created_at', { ascending: true }),
+                supabaseClient.from('products').select('*').eq('enabled', true)
+                    .order('created_at', { ascending: false })
+            ]);
 
-            if (error) {
-                console.error('Error cargando productos:', error);
+            if (prodRes.error) {
+                console.error('Error cargando productos:', prodRes.error);
                 grid.innerHTML = `<div class="col-span-full text-center py-16 text-red-400">
                     <i class="fa-solid fa-triangle-exclamation text-3xl mb-3"></i>
                     <p class="text-sm font-medium">No se pudieron cargar los productos. Intenta más tarde.</p>
@@ -463,7 +408,23 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
                 return;
             }
 
-            products = (data || []).map(p => ({
+            let prods = prodRes.data || [];
+
+            if (catRes.error) {
+                // Respaldo: si falla la tabla de categorías, se derivan de los productos
+                console.error('Error cargando categorías:', catRes.error);
+                const seen = new Map();
+                prods.forEach(p => { if (!seen.has(p.category)) seen.set(p.category, { slug: p.category, name: p.category_name, emoji: '' }); });
+                categories = [...seen.values()];
+            } else {
+                categories = catRes.data || [];
+            }
+
+            // Solo productos cuya categoría esté habilitada
+            const enabledSlugs = new Set(categories.map(c => c.slug));
+            prods = prods.filter(p => enabledSlugs.has(p.category));
+
+            products = prods.map(p => ({
                 id: p.id,
                 title: p.title,
                 description: p.description,
@@ -477,7 +438,37 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
                 image: p.image
             }));
 
+            renderCategoryUI();
             renderProducts();
+        }
+
+        // Construye filtros, menú móvil, footer y botones del carrusel
+        function renderCategoryUI() {
+            // Filtros del catálogo
+            const bar = document.getElementById('filtersBar');
+            bar.innerHTML =
+                `<button onclick="filterCategory('todos')" class="${activeCategory === 'todos' ? BTN_ACTIVE : BTN_INACTIVE}" data-category="todos">Todos</button>` +
+                categories.map(c => `
+                    <button onclick="filterCategory('${esc(c.slug)}')" class="${activeCategory === c.slug ? BTN_ACTIVE : BTN_INACTIVE}" data-category="${esc(c.slug)}">
+                        ${esc(c.emoji || '')} ${esc(c.name)}
+                    </button>`).join('');
+
+            // Menú móvil
+            document.getElementById('mobileCategories').innerHTML = categories.map(c => `
+                <button onclick="filterCategory('${esc(c.slug)}'); toggleMobileMenu()" class="w-full text-left px-3 py-2.5 rounded-lg hover:bg-purple-50 dark:hover:bg-slate-800 flex items-center gap-3">
+                    <span class="w-5 text-center">${esc(c.emoji || '🏷️')}</span>
+                    ${esc(c.name)}
+                </button>`).join('');
+
+            // Footer
+            document.getElementById('footerCategories').innerHTML = categories.map(c => `
+                <li><button onclick="filterCategory('${esc(c.slug)}')" class="hover:text-purple-400 transition-colors">${esc(c.name)}</button></li>`).join('');
+
+            // Botones del carrusel: ocultar los de categorías deshabilitadas
+            const enabledSlugs = new Set(categories.map(c => c.slug));
+            document.querySelectorAll('[data-hero-cat]').forEach(btn => {
+                btn.classList.toggle('hidden', !enabledSlugs.has(btn.dataset.heroCat));
+            });
         }
 
         function initTheme() {
@@ -541,13 +532,10 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
         function filterCategory(category) {
             activeCategory = category;
             document.querySelectorAll('.filter-btn').forEach(btn => {
-                if (btn.getAttribute('data-category') === category) {
-                    btn.className = "filter-btn active px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all bg-purple-600 text-white shadow-md shadow-purple-500/20";
-                } else {
-                    btn.className = "filter-btn px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700";
-                }
+                btn.className = btn.getAttribute('data-category') === category ? BTN_ACTIVE : BTN_INACTIVE;
             });
             renderProducts();
+            document.getElementById('catalogo').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         function renderProducts() {
@@ -571,13 +559,13 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
                 <div class="group rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between">
                     <div>
                         <div class="relative h-52 w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
-                            <img src="${product.image}" alt="${product.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
-                            ${product.badge ? `<span class="absolute top-3 left-3 text-[10px] font-bold uppercase tracking-wider text-white px-2.5 py-1 rounded-full shadow-md ${product.badgeColor}">${product.badge}</span>` : ''}
+                            <img src="${esc(product.image)}" alt="${esc(product.title)}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                            ${product.badge ? `<span class="absolute top-3 left-3 text-[10px] font-bold uppercase tracking-wider text-white px-2.5 py-1 rounded-full shadow-md ${esc(product.badgeColor)}">${esc(product.badge)}</span>` : ''}
                         </div>
                         <div class="p-5">
-                            <span class="text-[11px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider">${product.categoryName}</span>
-                            <h3 class="font-bold text-slate-900 dark:text-white mt-1 text-base line-clamp-2">${product.title}</h3>
-                            ${product.description ? `<p class="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">${product.description}</p>` : ''}
+                            <span class="text-[11px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider">${esc(product.categoryName)}</span>
+                            <h3 class="font-bold text-slate-900 dark:text-white mt-1 text-base line-clamp-2">${esc(product.title)}</h3>
+                            ${product.description ? `<p class="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">${esc(product.description)}</p>` : ''}
                             <div class="flex items-center gap-1.5 mt-2 text-amber-400 text-xs">
                                 <i class="fa-solid fa-star"></i>
                                 <span class="text-slate-700 dark:text-slate-300 font-bold">${product.rating}</span>
@@ -596,8 +584,9 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
         }
 
         function addToCart(id) {
-            const product = products.find(p => p.id === id);
-            const item = cart.find(i => i.id === id);
+            const product = products.find(p => String(p.id) === String(id));
+            if (!product) return;
+            const item = cart.find(i => String(i.id) === String(id));
             if (item) item.quantity += 1;
             else cart.push({ ...product, quantity: 1 });
             updateCartUI();
@@ -605,10 +594,10 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
         }
 
         function updateQuantity(id, delta) {
-            const item = cart.find(i => i.id === id);
+            const item = cart.find(i => String(i.id) === String(id));
             if (!item) return;
             item.quantity += delta;
-            if (item.quantity <= 0) cart = cart.filter(i => i.id !== id);
+            if (item.quantity <= 0) cart = cart.filter(i => String(i.id) !== String(id));
             updateCartUI();
         }
 
@@ -638,9 +627,9 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
             document.getElementById('checkoutBtn').disabled = false;
             itemsContainer.innerHTML = cart.map(item => `
                 <div class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-                    <img src="${item.image}" alt="${item.title}" class="w-16 h-16 rounded-lg object-cover">
+                    <img src="${esc(item.image)}" alt="${esc(item.title)}" class="w-16 h-16 rounded-lg object-cover">
                     <div class="flex-grow min-w-0">
-                        <h4 class="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">${item.title}</h4>
+                        <h4 class="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">${esc(item.title)}</h4>
                         <span class="text-xs font-extrabold text-purple-600 dark:text-purple-400">$${item.price.toFixed(2)}</span>
                         <div class="flex items-center gap-2 mt-2">
                             <button onclick="updateQuantity('${item.id}', -1)" class="w-6 h-6 rounded bg-white dark:bg-slate-700 text-xs">-</button>
@@ -652,11 +641,10 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
             `).join('');
         }
 
-       function enviarPedidoWhatsApp() {
-    if (cart.length === 0) return;
-    const telefono = "50378912255"; // Número actualizado
-    let mensaje = "¡Hola *Variedades Guerra*! 🛍️\nQuiero pedir los siguientes productos:\n\n";
-    
+        function enviarPedidoWhatsApp() {
+            if (cart.length === 0) return;
+            const telefono = "50378912255";
+            let mensaje = "¡Hola *Variedades Guerra*! 🛍️\nQuiero pedir los siguientes productos:\n\n";
             let total = 0;
             
             cart.forEach(item => {
