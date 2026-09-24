@@ -33,8 +33,7 @@
 <body class="bg-slate-50 text-slate-800 font-sans min-h-screen antialiased">
 
     <!-- ============================================ -->
-    <!-- CONFIGURACIÓN DE SUPABASE — EDITA ESTOS DOS VALORES -->
-    <!-- Deben ser IDÉNTICOS a los que pusiste en index.html -->
+    <!-- CONFIGURACIÓN DE SUPABASE — debe ser IDÉNTICA a la de index.html -->
     <!-- ============================================ -->
     <script>
         const SUPABASE_URL = "https://bfyryhopswahqdqpkqwc.supabase.co";
@@ -74,7 +73,7 @@
         </div>
     </div>
 
-    <!-- ===================== PANEL PRINCIPAL (oculto hasta iniciar sesión) ===================== -->
+    <!-- ===================== PANEL PRINCIPAL ===================== -->
     <div id="adminPanel" class="hidden">
         <header class="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200">
             <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
@@ -95,7 +94,27 @@
 
         <main class="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-8">
 
-            <!-- Formulario Agregar / Editar producto -->
+            <!-- ===== Gestión de categorías ===== -->
+            <section class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                <h2 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-layer-group text-purple-600"></i> Secciones / Categorías
+                    <span id="categoryCount" class="text-xs font-medium text-slate-400"></span>
+                </h2>
+
+                <form id="categoryForm" class="flex flex-col sm:flex-row gap-3 mb-5">
+                    <input type="text" id="cEmoji" maxlength="4" placeholder="🏷️" class="w-full sm:w-20 px-3 py-2.5 rounded-xl border border-slate-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 text-sm text-center">
+                    <input type="text" id="cName" required placeholder="Nombre de la nueva sección (ej: Juguetes)" class="flex-1 px-3 py-2.5 rounded-xl border border-slate-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 text-sm">
+                    <button type="submit" id="categoryBtn" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold text-sm hover:shadow-lg hover:shadow-purple-500/30 transition-all whitespace-nowrap">
+                        <i class="fa-solid fa-plus mr-1"></i> Añadir sección
+                    </button>
+                </form>
+
+                <div id="categoriesList" class="space-y-2"></div>
+                <p id="categoriesEmpty" class="hidden text-center text-sm text-slate-400 py-4">No hay secciones todavía.</p>
+                <p id="categoriesError" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></p>
+            </section>
+
+            <!-- ===== Formulario Agregar / Editar producto ===== -->
             <section class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
                 <h2 id="formTitle" class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
                     <i class="fa-solid fa-circle-plus text-purple-600"></i> Agregar producto
@@ -115,12 +134,7 @@
 
                     <div>
                         <label class="text-xs font-bold text-slate-600 block mb-1">Categoría *</label>
-                        <select id="fCategory" required class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 text-sm">
-                            <option value="cumpleanos">🎂 Cumpleaños</option>
-                            <option value="personales">🕶️ Artículos Personales</option>
-                            <option value="especiales">🎁 Ocasiones Especiales</option>
-                            <option value="escolares">📚 Útiles Escolares</option>
-                        </select>
+                        <select id="fCategory" required class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 text-sm"></select>
                     </div>
 
                     <div>
@@ -147,6 +161,13 @@
                     </div>
 
                     <div class="sm:col-span-2">
+                        <label class="flex items-center gap-2 text-sm font-semibold text-slate-700 cursor-pointer">
+                            <input type="checkbox" id="fEnabled" checked class="w-4 h-4 accent-purple-600">
+                            Producto habilitado (visible en la tienda)
+                        </label>
+                    </div>
+
+                    <div class="sm:col-span-2">
                         <label class="text-xs font-bold text-slate-600 block mb-1">Imagen del producto *</label>
                         <input type="file" id="fImageFile" accept="image/*" class="w-full text-sm">
                         <div class="flex items-center gap-3 mt-2">
@@ -167,7 +188,7 @@
                 </form>
             </section>
 
-            <!-- Lista de productos existentes -->
+            <!-- ===== Lista de productos ===== -->
             <section>
                 <h2 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
                     <i class="fa-solid fa-boxes-stacked text-purple-600"></i> Productos publicados
@@ -186,21 +207,26 @@
     </div>
 
     <script>
-        const categoryNames = {
-            cumpleanos: 'Cumpleaños',
-            personales: 'Artículos Personales',
-            especiales: 'Ocasiones Especiales',
-            escolares: 'Útiles Escolares'
-        };
-
         let editingId = null;
         let adminProducts = [];
+        let adminCategories = [];
         let pendingImageFile = null;
+
+        function esc(s) {
+            return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
+        function slugify(text) {
+            return text.toLowerCase()
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+        }
 
         document.addEventListener('DOMContentLoaded', () => {
             checkSession();
             setupAuthListeners();
             setupFormListeners();
+            setupCategoryListeners();
         });
 
         // ---------- SESIÓN / LOGIN ----------
@@ -231,7 +257,6 @@
 
                 try {
                     const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-
                     if (error) {
                         console.error('Error de login (Supabase):', error);
                         errorEl.innerText = error.message || 'Correo o contraseña incorrectos.';
@@ -260,14 +285,135 @@
             document.getElementById('adminPanel').classList.add('hidden');
         }
 
-        function showPanel(session) {
+        async function showPanel(session) {
             document.getElementById('loginScreen').classList.add('hidden');
             document.getElementById('adminPanel').classList.remove('hidden');
             document.getElementById('userEmailLabel').innerText = session.user.email;
-            loadAdminProducts();
+            await loadCategories();
+            await loadAdminProducts();
         }
 
-        // ---------- FORMULARIO ----------
+        // ---------- CATEGORÍAS ----------
+        async function loadCategories() {
+            const errEl = document.getElementById('categoriesError');
+            errEl.classList.add('hidden');
+
+            const { data, error } = await supabaseClient
+                .from('categories')
+                .select('*')
+                .order('sort_order', { ascending: true })
+                .order('created_at', { ascending: true });
+
+            if (error) {
+                console.error(error);
+                errEl.innerText = 'No se pudieron cargar las categorías. ¿Ya ejecutaste el SQL para crear la tabla "categories"?';
+                errEl.classList.remove('hidden');
+                adminCategories = [];
+            } else {
+                adminCategories = data;
+            }
+            renderCategories();
+            fillCategorySelect();
+        }
+
+        function renderCategories() {
+            const list = document.getElementById('categoriesList');
+            const empty = document.getElementById('categoriesEmpty');
+            document.getElementById('categoryCount').innerText = `(${adminCategories.length})`;
+
+            if (adminCategories.length === 0) {
+                list.innerHTML = '';
+                empty.classList.remove('hidden');
+                return;
+            }
+            empty.classList.add('hidden');
+
+            list.innerHTML = adminCategories.map(c => {
+                const count = adminProducts.filter(p => p.category === c.slug).length;
+                return `
+                <div class="flex items-center gap-3 p-3 rounded-xl border ${c.enabled ? 'border-slate-200 bg-white' : 'border-slate-200 bg-slate-50 opacity-70'}">
+                    <span class="text-xl w-8 text-center">${esc(c.emoji || '🏷️')}</span>
+                    <div class="flex-1 min-w-0">
+                        <p class="font-bold text-sm text-slate-900 truncate">${esc(c.name)}
+                            ${c.enabled ? '' : '<span class="ml-1 text-[10px] font-bold uppercase text-slate-500 bg-slate-200 rounded px-1.5 py-0.5">Deshabilitada</span>'}
+                        </p>
+                        <p class="text-xs text-slate-400">${count} producto${count === 1 ? '' : 's'}</p>
+                    </div>
+                    <button data-caction="toggle" data-id="${c.id}" class="text-xs font-bold px-3 py-2 rounded-lg ${c.enabled ? 'bg-amber-50 text-amber-700 hover:bg-amber-100' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'}">
+                        <i class="fa-solid ${c.enabled ? 'fa-eye-slash' : 'fa-eye'} mr-1"></i>${c.enabled ? 'Deshabilitar' : 'Habilitar'}
+                    </button>
+                    <button data-caction="delete" data-id="${c.id}" class="text-xs font-bold px-3 py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100">
+                        <i class="fa-solid fa-trash mr-1"></i>Borrar
+                    </button>
+                </div>`;
+            }).join('');
+        }
+
+        function fillCategorySelect(selected) {
+            const sel = document.getElementById('fCategory');
+            const current = selected ?? sel.value;
+            sel.innerHTML = adminCategories.map(c =>
+                `<option value="${esc(c.slug)}">${esc(c.emoji || '')} ${esc(c.name)}${c.enabled ? '' : ' (deshabilitada)'}</option>`
+            ).join('');
+            if (current) sel.value = current;
+        }
+
+        function setupCategoryListeners() {
+            document.getElementById('categoryForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const name = document.getElementById('cName').value.trim();
+                const emoji = document.getElementById('cEmoji').value.trim() || '🏷️';
+                const slug = slugify(name);
+                if (!name || !slug) return;
+
+                if (adminCategories.some(c => c.slug === slug)) {
+                    showToast('Ya existe una sección con ese nombre', true);
+                    return;
+                }
+
+                const btn = document.getElementById('categoryBtn');
+                btn.disabled = true;
+                const nextOrder = adminCategories.reduce((m, c) => Math.max(m, c.sort_order || 0), 0) + 1;
+                const { error } = await supabaseClient.from('categories').insert({ slug, name, emoji, enabled: true, sort_order: nextOrder });
+                btn.disabled = false;
+
+                if (error) {
+                    console.error(error);
+                    showToast('Error al crear la sección', true);
+                    return;
+                }
+                document.getElementById('categoryForm').reset();
+                showToast('Sección añadida ✅');
+                await loadCategories();
+            });
+
+            document.getElementById('categoriesList').addEventListener('click', async (e) => {
+                const btn = e.target.closest('button[data-caction]');
+                if (!btn) return;
+                const cat = adminCategories.find(c => String(c.id) === String(btn.dataset.id));
+                if (!cat) return;
+
+                if (btn.dataset.caction === 'toggle') {
+                    const { error } = await supabaseClient.from('categories').update({ enabled: !cat.enabled }).eq('id', cat.id);
+                    if (error) { console.error(error); showToast('Error al actualizar', true); return; }
+                    showToast(cat.enabled ? 'Sección deshabilitada' : 'Sección habilitada ✅');
+                    await loadCategories();
+                } else if (btn.dataset.caction === 'delete') {
+                    const count = adminProducts.filter(p => p.category === cat.slug).length;
+                    if (count > 0) {
+                        alert(`No se puede borrar "${cat.name}" porque tiene ${count} producto(s).\n\nMueve o elimina esos productos primero, o simplemente deshabilita la sección.`);
+                        return;
+                    }
+                    if (!confirm(`¿Borrar la sección "${cat.name}"? Esta acción no se puede deshacer.`)) return;
+                    const { error } = await supabaseClient.from('categories').delete().eq('id', cat.id);
+                    if (error) { console.error(error); showToast('Error al borrar', true); return; }
+                    showToast('Sección borrada 🗑️');
+                    await loadCategories();
+                }
+            });
+        }
+
+        // ---------- FORMULARIO DE PRODUCTOS ----------
         function setupFormListeners() {
             document.getElementById('fImageFile').addEventListener('change', (e) => {
                 const file = e.target.files[0];
@@ -292,6 +438,7 @@
             pendingImageFile = null;
             document.getElementById('productForm').reset();
             document.getElementById('productId').value = '';
+            document.getElementById('fEnabled').checked = true;
             document.getElementById('fImagePreview').classList.add('hidden');
             document.getElementById('fImageStatus').innerText = '';
             document.getElementById('formTitle').innerHTML = '<i class="fa-solid fa-circle-plus text-purple-600"></i> Agregar producto';
@@ -309,7 +456,14 @@
             const price = parseFloat(document.getElementById('fPrice').value);
             const badge = document.getElementById('fBadge').value.trim() || null;
             const badgeColor = document.getElementById('fBadgeColor').value;
+            const enabled = document.getElementById('fEnabled').checked;
+            const cat = adminCategories.find(c => c.slug === category);
 
+            if (!cat) {
+                statusEl.innerText = 'Crea o selecciona una categoría primero.';
+                statusEl.className = 'text-xs font-medium text-red-600';
+                return;
+            }
             if (!editingId && !pendingImageFile) {
                 statusEl.innerText = 'Selecciona una imagen para el producto.';
                 statusEl.className = 'text-xs font-medium text-red-600';
@@ -322,19 +476,17 @@
 
             try {
                 let imageUrl = null;
-
-                if (pendingImageFile) {
-                    imageUrl = await uploadImage(pendingImageFile);
-                }
+                if (pendingImageFile) imageUrl = await uploadImage(pendingImageFile);
 
                 const payload = {
                     title,
                     description,
                     category,
-                    category_name: categoryNames[category],
+                    category_name: cat.name,
                     price,
                     badge,
-                    badge_color: badgeColor
+                    badge_color: badgeColor,
+                    enabled
                 };
                 if (imageUrl) payload.image = imageUrl;
 
@@ -350,7 +502,7 @@
 
                 resetForm();
                 statusEl.innerText = '';
-                loadAdminProducts();
+                await loadAdminProducts();
             } catch (err) {
                 console.error(err);
                 statusEl.innerText = 'Ocurrió un error al guardar. Revisa la consola.';
@@ -372,7 +524,7 @@
             return data.publicUrl;
         }
 
-        // ---------- LISTADO / EDITAR / ELIMINAR ----------
+        // ---------- LISTADO / EDITAR / HABILITAR / ELIMINAR ----------
         async function loadAdminProducts() {
             const list = document.getElementById('adminProductsList');
             const empty = document.getElementById('adminEmptyState');
@@ -390,6 +542,7 @@
 
             countEl.innerText = `(${data.length})`;
             adminProducts = data;
+            renderCategories(); // actualiza los conteos por sección
 
             if (data.length === 0) {
                 list.innerHTML = '';
@@ -398,28 +551,34 @@
             }
             empty.classList.add('hidden');
 
-            list.innerHTML = data.map(p => `
-                <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-                    <img src="${p.image}" alt="${p.title}" class="w-full h-36 object-cover">
+            list.innerHTML = data.map(p => {
+                const on = p.enabled !== false;
+                return `
+                <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm ${on ? '' : 'opacity-60'}">
+                    <div class="relative">
+                        <img src="${esc(p.image)}" alt="${esc(p.title)}" class="w-full h-36 object-cover ${on ? '' : 'grayscale'}">
+                        ${on ? '' : '<span class="absolute top-2 left-2 text-[10px] font-bold uppercase bg-slate-900 text-white rounded px-2 py-1">Deshabilitado</span>'}
+                    </div>
                     <div class="p-4">
-                        <span class="text-[10px] font-bold text-purple-600 uppercase tracking-wider">${p.category_name}</span>
-                        <h3 class="font-bold text-slate-900 text-sm mt-0.5 line-clamp-2">${p.title}</h3>
+                        <span class="text-[10px] font-bold text-purple-600 uppercase tracking-wider">${esc(p.category_name)}</span>
+                        <h3 class="font-bold text-slate-900 text-sm mt-0.5 line-clamp-2">${esc(p.title)}</h3>
                         <p class="text-sm font-black text-slate-900 mt-1">$${Number(p.price).toFixed(2)}</p>
-                        <div class="flex items-center gap-2 mt-3">
-                            <button data-action="edit" data-id="${p.id}" class="flex-1 text-xs font-bold py-2 rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors">
+                        <div class="grid grid-cols-3 gap-2 mt-3">
+                            <button data-action="toggle" data-id="${p.id}" title="${on ? 'Deshabilitar' : 'Habilitar'}" class="text-xs font-bold py-2 rounded-lg ${on ? 'bg-amber-50 text-amber-700 hover:bg-amber-100' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'}">
+                                <i class="fa-solid ${on ? 'fa-eye-slash' : 'fa-eye'}"></i>
+                            </button>
+                            <button data-action="edit" data-id="${p.id}" class="text-xs font-bold py-2 rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100">
                                 <i class="fa-solid fa-pen mr-1"></i> Editar
                             </button>
-                            <button data-action="delete" data-id="${p.id}" class="flex-1 text-xs font-bold py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
-                                <i class="fa-solid fa-trash mr-1"></i> Eliminar
+                            <button data-action="delete" data-id="${p.id}" class="text-xs font-bold py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100">
+                                <i class="fa-solid fa-trash mr-1"></i> Borrar
                             </button>
                         </div>
                     </div>
-                </div>
-            `).join('');
+                </div>`;
+            }).join('');
         }
 
-        // Delegación de eventos: un solo listener maneja todos los botones Editar/Eliminar,
-        // incluso los que se crean después de recargar la lista.
         document.getElementById('adminProductsList').addEventListener('click', (e) => {
             const btn = e.target.closest('button[data-action]');
             if (!btn) return;
@@ -427,12 +586,22 @@
             const product = adminProducts.find(p => String(p.id) === String(id));
             if (!product) return;
 
-            if (btn.dataset.action === 'edit') {
-                editProduct(product);
-            } else if (btn.dataset.action === 'delete') {
-                deleteProduct(product.id, product.title);
-            }
+            if (btn.dataset.action === 'edit') editProduct(product);
+            else if (btn.dataset.action === 'delete') deleteProduct(product.id, product.title);
+            else if (btn.dataset.action === 'toggle') toggleProduct(product);
         });
+
+        async function toggleProduct(p) {
+            const newState = p.enabled === false; // si estaba deshabilitado, ahora se habilita
+            const { error } = await supabaseClient.from('products').update({ enabled: newState }).eq('id', p.id);
+            if (error) {
+                console.error(error);
+                showToast('Error al actualizar', true);
+                return;
+            }
+            showToast(newState ? 'Producto habilitado ✅' : 'Producto deshabilitado');
+            loadAdminProducts();
+        }
 
         function editProduct(p) {
             editingId = p.id;
@@ -440,16 +609,17 @@
             document.getElementById('productId').value = p.id;
             document.getElementById('fTitle').value = p.title;
             document.getElementById('fDescription').value = p.description || '';
-            document.getElementById('fCategory').value = p.category;
+            fillCategorySelect(p.category);
             document.getElementById('fPrice').value = p.price;
             document.getElementById('fBadge').value = p.badge || '';
             document.getElementById('fBadgeColor').value = p.badge_color || 'bg-purple-500';
+            document.getElementById('fEnabled').checked = p.enabled !== false;
             const img = document.getElementById('fImagePreview');
             img.src = p.image;
             img.classList.remove('hidden');
             document.getElementById('fImageStatus').innerText = 'Imagen actual (sube una nueva solo si quieres cambiarla)';
 
-            document.getElementById('formTitle').innerHTML = '<i class="fa-solid fa-pen text-purple-600"></i> Editando: ' + p.title;
+            document.getElementById('formTitle').innerHTML = '<i class="fa-solid fa-pen text-purple-600"></i> Editando: ' + esc(p.title);
             document.getElementById('submitBtn').innerHTML = '<i class="fa-solid fa-floppy-disk mr-1"></i> Guardar cambios';
             document.getElementById('cancelEditBtn').classList.remove('hidden');
             window.scrollTo({ top: 0, behavior: 'smooth' });
