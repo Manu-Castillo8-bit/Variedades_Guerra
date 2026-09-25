@@ -299,6 +299,15 @@
         <span id="toastMessage" class="text-sm font-medium">Producto agregado al carrito</span>
     </div>
 
+    <!-- Visor de imagen a pantalla completa -->
+    <div id="imageLightbox" class="hidden fixed inset-0 z-[60] bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8">
+        <button id="lightboxCloseBtn" aria-label="Cerrar" class="absolute top-4 right-4 sm:top-6 sm:right-6 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors">
+            <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+        <img id="lightboxImage" src="" alt="" class="max-w-full max-h-full object-contain rounded-lg shadow-2xl">
+        <p id="lightboxCaption" class="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 text-white/80 text-sm font-medium px-4 text-center"></p>
+    </div>
+
     <!-- Footer -->
     <footer class="bg-slate-900 text-slate-300 pt-12 pb-8 border-t border-slate-800">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -559,7 +568,7 @@
                 <div class="group rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between">
                     <div>
                         <div class="relative h-52 w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
-                            <img src="${esc(product.image)}" alt="${esc(product.title)}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                            <img src="${esc(product.image)}" alt="${esc(product.title)}" data-lightbox-src="${esc(product.image)}" data-lightbox-caption="${esc(product.title)}" class="w-full h-full object-cover cursor-zoom-in group-hover:scale-105 transition-transform duration-500">
                             ${product.badge ? `<span class="absolute top-3 left-3 text-[10px] font-bold uppercase tracking-wider text-white px-2.5 py-1 rounded-full shadow-md ${esc(product.badgeColor)}">${esc(product.badge)}</span>` : ''}
                         </div>
                         <div class="p-5">
@@ -739,6 +748,33 @@
             document.getElementById('closeCartBtn').addEventListener('click', closeCart);
             cartOverlay.addEventListener('click', closeCart);
             document.getElementById('mobileMenuBtn').addEventListener('click', toggleMobileMenu);
+
+            document.getElementById('productsGrid').addEventListener('click', (e) => {
+                const img = e.target.closest('[data-lightbox-src]');
+                if (img) openLightbox(img.dataset.lightboxSrc, img.dataset.lightboxCaption);
+            });
+            document.getElementById('lightboxCloseBtn').addEventListener('click', closeLightbox);
+            document.getElementById('imageLightbox').addEventListener('click', (e) => {
+                if (e.target.id === 'imageLightbox') closeLightbox();
+            });
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') closeLightbox();
+            });
+        }
+
+        // ---------- VISOR DE IMAGEN A PANTALLA COMPLETA ----------
+        function openLightbox(src, caption) {
+            document.getElementById('lightboxImage').src = src;
+            document.getElementById('lightboxImage').alt = caption || '';
+            document.getElementById('lightboxCaption').innerText = caption || '';
+            document.getElementById('imageLightbox').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeLightbox() {
+            document.getElementById('imageLightbox').classList.add('hidden');
+            document.getElementById('lightboxImage').src = '';
+            document.body.style.overflow = '';
         }
 
         function toggleMobileMenu() {

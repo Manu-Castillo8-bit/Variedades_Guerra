@@ -218,6 +218,15 @@
         <span id="toastMessage" class="text-sm font-medium"></span>
     </div>
 
+    <!-- Visor de imagen a pantalla completa -->
+    <div id="imageLightbox" class="hidden fixed inset-0 z-[60] bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8">
+        <button id="lightboxCloseBtn" aria-label="Cerrar" class="absolute top-4 right-4 sm:top-6 sm:right-6 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors">
+            <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+        <img id="lightboxImage" src="" alt="" class="max-w-full max-h-full object-contain rounded-lg shadow-2xl">
+        <p id="lightboxCaption" class="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 text-white/80 text-sm font-medium px-4 text-center"></p>
+    </div>
+
     <script>
         let editingId = null;
         let adminProducts = [];
@@ -611,7 +620,7 @@
                 return `
                 <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm ${on ? '' : 'opacity-60'}">
                     <div class="relative">
-                        <img src="${esc(p.image)}" alt="${esc(p.title)}" class="w-full h-36 object-cover ${on ? '' : 'grayscale'}">
+                        <img src="${esc(p.image)}" alt="${esc(p.title)}" data-lightbox-src="${esc(p.image)}" data-lightbox-caption="${esc(p.title)}" class="w-full h-36 object-cover cursor-zoom-in ${on ? '' : 'grayscale'}">
                         ${on ? '' : '<span class="absolute top-2 left-2 text-[10px] font-bold uppercase bg-slate-900 text-white rounded px-2 py-1">Deshabilitado</span>'}
                     </div>
                     <div class="p-4">
@@ -635,6 +644,12 @@
         }
 
         document.getElementById('adminProductsList').addEventListener('click', (e) => {
+            const img = e.target.closest('[data-lightbox-src]');
+            if (img) {
+                openLightbox(img.dataset.lightboxSrc, img.dataset.lightboxCaption);
+                return;
+            }
+
             const btn = e.target.closest('button[data-action]');
             if (!btn) return;
             const id = btn.getAttribute('data-id');
@@ -644,6 +659,29 @@
             if (btn.dataset.action === 'edit') editProduct(product);
             else if (btn.dataset.action === 'delete') deleteProduct(product.id, product.title);
             else if (btn.dataset.action === 'toggle') toggleProduct(product);
+        });
+
+        // ---------- VISOR DE IMAGEN A PANTALLA COMPLETA ----------
+        function openLightbox(src, caption) {
+            document.getElementById('lightboxImage').src = src;
+            document.getElementById('lightboxImage').alt = caption || '';
+            document.getElementById('lightboxCaption').innerText = caption || '';
+            document.getElementById('imageLightbox').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeLightbox() {
+            document.getElementById('imageLightbox').classList.add('hidden');
+            document.getElementById('lightboxImage').src = '';
+            document.body.style.overflow = '';
+        }
+
+        document.getElementById('lightboxCloseBtn').addEventListener('click', closeLightbox);
+        document.getElementById('imageLightbox').addEventListener('click', (e) => {
+            if (e.target.id === 'imageLightbox') closeLightbox();
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeLightbox();
         });
 
         async function toggleProduct(p) {
