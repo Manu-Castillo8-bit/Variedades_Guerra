@@ -194,8 +194,20 @@
                     <i class="fa-solid fa-boxes-stacked text-purple-600"></i> Productos publicados
                     <span id="productCount" class="text-xs font-medium text-slate-400"></span>
                 </h2>
+
+                <div class="flex flex-col sm:flex-row gap-3 mb-4">
+                    <div class="relative flex-1">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                        <input type="text" id="productSearch" placeholder="Buscar producto por nombre..." class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 text-sm">
+                    </div>
+                    <select id="productCategoryFilter" class="w-full sm:w-64 px-3 py-2.5 rounded-xl border border-slate-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 text-sm">
+                        <option value="todas">Todas las categorías</option>
+                    </select>
+                </div>
+
                 <div id="adminProductsList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
                 <p id="adminEmptyState" class="hidden text-center text-sm text-slate-400 py-10">Todavía no hay productos. Agrega el primero arriba. 👆</p>
+                <p id="adminNoMatch" class="hidden text-center text-sm text-slate-400 py-10">Ningún producto coincide con la búsqueda o el filtro.</p>
             </section>
         </main>
     </div>
@@ -211,6 +223,8 @@
         let adminProducts = [];
         let adminCategories = [];
         let pendingImageFile = null;
+        let productSearchQuery = '';
+        let productCategoryFilterValue = 'todas';
 
         function esc(s) {
             return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -314,6 +328,7 @@
             }
             renderCategories();
             fillCategorySelect();
+            fillProductCategoryFilter();
         }
 
         function renderCategories() {
@@ -356,6 +371,16 @@
                 `<option value="${esc(c.slug)}">${esc(c.emoji || '')} ${esc(c.name)}${c.enabled ? '' : ' (deshabilitada)'}</option>`
             ).join('');
             if (current) sel.value = current;
+        }
+
+        function fillProductCategoryFilter() {
+            const sel = document.getElementById('productCategoryFilter');
+            const current = sel.value || 'todas';
+            sel.innerHTML = '<option value="todas">Todas las categorías</option>' +
+                adminCategories.map(c =>
+                    `<option value="${esc(c.slug)}">${esc(c.emoji || '')} ${esc(c.name)}${c.enabled ? '' : ' (deshabilitada)'}</option>`
+                ).join('');
+            sel.value = current;
         }
 
         function setupCategoryListeners() {
@@ -431,6 +456,15 @@
 
             document.getElementById('cancelEditBtn').addEventListener('click', resetForm);
             document.getElementById('productForm').addEventListener('submit', handleSubmit);
+
+            document.getElementById('productSearch').addEventListener('input', (e) => {
+                productSearchQuery = e.target.value.trim().toLowerCase();
+                renderAdminProductsList();
+            });
+            document.getElementById('productCategoryFilter').addEventListener('change', (e) => {
+                productCategoryFilterValue = e.target.value;
+                renderAdminProductsList();
+            });
         }
 
         function resetForm() {
@@ -527,8 +561,6 @@
         // ---------- LISTADO / EDITAR / HABILITAR / ELIMINAR ----------
         async function loadAdminProducts() {
             const list = document.getElementById('adminProductsList');
-            const empty = document.getElementById('adminEmptyState');
-            const countEl = document.getElementById('productCount');
 
             const { data, error } = await supabaseClient
                 .from('products')
@@ -540,18 +572,41 @@
                 return;
             }
 
-            countEl.innerText = `(${data.length})`;
             adminProducts = data;
             renderCategories(); // actualiza los conteos por sección
+            renderAdminProductsList();
+        }
 
-            if (data.length === 0) {
+        function renderAdminProductsList() {
+            const list = document.getElementById('adminProductsList');
+            const empty = document.getElementById('adminEmptyState');
+            const noMatch = document.getElementById('adminNoMatch');
+            const countEl = document.getElementById('productCount');
+
+            countEl.innerText = `(${adminProducts.length})`;
+
+            if (adminProducts.length === 0) {
                 list.innerHTML = '';
+                noMatch.classList.add('hidden');
                 empty.classList.remove('hidden');
                 return;
             }
             empty.classList.add('hidden');
 
-            list.innerHTML = data.map(p => {
+            const filtered = adminProducts.filter(p => {
+                const matchesCategory = productCategoryFilterValue === 'todas' || p.category === productCategoryFilterValue;
+                const matchesSearch = !productSearchQuery || p.title.toLowerCase().includes(productSearchQuery);
+                return matchesCategory && matchesSearch;
+            });
+
+            if (filtered.length === 0) {
+                list.innerHTML = '';
+                noMatch.classList.remove('hidden');
+                return;
+            }
+            noMatch.classList.add('hidden');
+
+            list.innerHTML = filtered.map(p => {
                 const on = p.enabled !== false;
                 return `
                 <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm ${on ? '' : 'opacity-60'}">
