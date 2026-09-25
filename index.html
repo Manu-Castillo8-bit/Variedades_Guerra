@@ -641,22 +641,75 @@
             `).join('');
         }
 
-        function enviarPedidoWhatsApp() {
+        async function enviarPedidoWhatsApp() {
             if (cart.length === 0) return;
             const telefono = "50378912255";
             let mensaje = "¡Hola *Variedades Guerra*! 🛍️\nQuiero pedir los siguientes productos:\n\n";
             let total = 0;
-            
+
             cart.forEach(item => {
                 const subtotal = item.price * item.quantity;
                 total += subtotal;
                 mensaje += `• ${item.quantity}x ${item.title} - $${subtotal.toFixed(2)}\n`;
             });
-            
+
             mensaje += `\n*Total a Pagar:* $${total.toFixed(2)}`;
             mensaje += "\n\n¿Tienen disponibilidad para coordinar el pago y envío?";
-            
-            window.open(`https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}`, '_blank');
+
+            const btn = document.getElementById('checkoutBtn');
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Preparando pedido...</span>';
+
+            const compartido = await intentarCompartirConImagenes(mensaje);
+
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+
+            if (!compartido) {
+                // Respaldo: wa.me solo abre WhatsApp con texto, no puede adjuntar imágenes.
+                // Se incluyen los links de las fotos para que se puedan tocar y ver.
+                let mensajeConFotos = mensaje + "\n\nFotos de los productos:\n";
+                cart.forEach(item => { mensajeConFotos += `${item.title}: ${item.image}\n`; });
+                window.open(`https://wa.me/${telefono}?text=${encodeURIComponent(mensajeConFotos)}`, '_blank');
+            }
+        }
+
+        // Intenta abrir el panel nativo de compartir del dispositivo con el texto del pedido
+        // y las fotos de los productos adjuntas, para que el usuario elija WhatsApp y las envíe juntas.
+        // Devuelve true si logró compartir (o si el usuario canceló el panel), false si hay que usar el respaldo.
+        async function intentarCompartirConImagenes(mensaje) {
+            if (!navigator.share) return false;
+
+            const files = [];
+            for (const item of cart) {
+                try {
+                    const res = await fetch(item.image);
+                    const blob = await res.blob();
+                    const ext = (blob.type.split('/')[1] || 'jpg').split('+')[0];
+                    const safeName = item.title.replace(/[^a-zA-Z0-9._-]/g, '_') + '.' + ext;
+                    files.push(new File([blob], safeName, { type: blob.type }));
+                } catch (e) {
+                    console.warn('No se pudo preparar la imagen para compartir:', item.image, e);
+                }
+            }
+
+            const canShareFiles = files.length > 0 && navigator.canShare && navigator.canShare({ files });
+
+            try {
+                if (canShareFiles) {
+                    await navigator.share({ text: mensaje, files });
+                } else {
+                    // El dispositivo no soporta compartir imágenes: se comparte solo el texto
+                    await navigator.share({ text: mensaje });
+                    return false; // así el respaldo agrega los links de las fotos igual
+                }
+                return true;
+            } catch (err) {
+                if (err.name === 'AbortError') return true; // el usuario cerró el panel, no forzar el respaldo
+                console.warn('No se pudo compartir, se usará el enlace directo de WhatsApp:', err);
+                return false;
+            }
         }
 
         function setupEventListeners() {
