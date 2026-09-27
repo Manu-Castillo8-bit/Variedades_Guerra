@@ -102,10 +102,14 @@
                 </h2>
 
                 <form id="categoryForm" class="flex flex-col sm:flex-row gap-3 mb-5">
+                    <input type="hidden" id="categoryId">
                     <input type="text" id="cEmoji" maxlength="4" placeholder="🏷️" class="w-full sm:w-20 px-3 py-2.5 rounded-xl border border-slate-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 text-sm text-center">
                     <input type="text" id="cName" required placeholder="Nombre de la nueva sección (ej: Juguetes)" class="flex-1 px-3 py-2.5 rounded-xl border border-slate-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 text-sm">
                     <button type="submit" id="categoryBtn" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold text-sm hover:shadow-lg hover:shadow-purple-500/30 transition-all whitespace-nowrap">
                         <i class="fa-solid fa-plus mr-1"></i> Añadir sección
+                    </button>
+                    <button type="button" id="cancelCategoryEditBtn" class="hidden px-5 py-2.5 rounded-xl bg-slate-100 text-slate-600 font-bold text-sm hover:bg-slate-200 transition-all whitespace-nowrap">
+                        Cancelar
                     </button>
                 </form>
 
@@ -229,6 +233,7 @@
 
     <script>
         let editingId = null;
+        let editingCategoryId = null;
         let adminProducts = [];
         let adminCategories = [];
         let pendingImageFile = null;
@@ -363,6 +368,9 @@
                         </p>
                         <p class="text-xs text-slate-400">${count} producto${count === 1 ? '' : 's'}</p>
                     </div>
+                    <button data-caction="edit" data-id="${c.id}" class="text-xs font-bold px-3 py-2 rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100">
+                        <i class="fa-solid fa-pen mr-1"></i>Editar
+                    </button>
                     <button data-caction="toggle" data-id="${c.id}" class="text-xs font-bold px-3 py-2 rounded-lg ${c.enabled ? 'bg-amber-50 text-amber-700 hover:bg-amber-100' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'}">
                         <i class="fa-solid ${c.enabled ? 'fa-eye-slash' : 'fa-eye'} mr-1"></i>${c.enabled ? 'Deshabilitar' : 'Habilitar'}
                     </button>
@@ -392,21 +400,55 @@
             sel.value = current;
         }
 
+        function resetCategoryForm() {
+            editingCategoryId = null;
+            document.getElementById('categoryForm').reset();
+            document.getElementById('categoryId').value = '';
+            document.getElementById('categoryBtn').innerHTML = '<i class="fa-solid fa-plus mr-1"></i> Añadir sección';
+            document.getElementById('cancelCategoryEditBtn').classList.add('hidden');
+        }
+
         function setupCategoryListeners() {
             document.getElementById('categoryForm').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const name = document.getElementById('cName').value.trim();
                 const emoji = document.getElementById('cEmoji').value.trim() || '🏷️';
-                const slug = slugify(name);
-                if (!name || !slug) return;
-
-                if (adminCategories.some(c => c.slug === slug)) {
-                    showToast('Ya existe una sección con ese nombre', true);
-                    return;
-                }
+                if (!name) return;
 
                 const btn = document.getElementById('categoryBtn');
                 btn.disabled = true;
+
+                if (editingCategoryId) {
+                    const cat = adminCategories.find(c => String(c.id) === String(editingCategoryId));
+                    const { error } = await supabaseClient.from('categories').update({ name, emoji }).eq('id', editingCategoryId);
+
+                    if (!error && cat) {
+                        // Mantiene sincronizado el nombre de categoría guardado en los productos existentes
+                        await supabaseClient.from('products').update({ category_name: name }).eq('category', cat.slug);
+                    }
+
+                    btn.disabled = false;
+                    if (error) {
+                        console.error(error);
+                        showToast('Error al actualizar la sección', true);
+                        return;
+                    }
+                    resetCategoryForm();
+                    showToast('Sección actualizada ✅');
+                    await loadCategories();
+                    await loadAdminProducts();
+                    return;
+                }
+
+                const slug = slugify(name);
+                if (!slug) { btn.disabled = false; return; }
+
+                if (adminCategories.some(c => c.slug === slug)) {
+                    showToast('Ya existe una sección con ese nombre', true);
+                    btn.disabled = false;
+                    return;
+                }
+
                 const nextOrder = adminCategories.reduce((m, c) => Math.max(m, c.sort_order || 0), 0) + 1;
                 const { error } = await supabaseClient.from('categories').insert({ slug, name, emoji, enabled: true, sort_order: nextOrder });
                 btn.disabled = false;
@@ -421,13 +463,24 @@
                 await loadCategories();
             });
 
+            document.getElementById('cancelCategoryEditBtn').addEventListener('click', resetCategoryForm);
+
             document.getElementById('categoriesList').addEventListener('click', async (e) => {
                 const btn = e.target.closest('button[data-caction]');
                 if (!btn) return;
                 const cat = adminCategories.find(c => String(c.id) === String(btn.dataset.id));
                 if (!cat) return;
 
-                if (btn.dataset.caction === 'toggle') {
+                if (btn.dataset.caction === 'edit') {
+                    editingCategoryId = cat.id;
+                    document.getElementById('categoryId').value = cat.id;
+                    document.getElementById('cEmoji').value = cat.emoji || '';
+                    document.getElementById('cName').value = cat.name;
+                    document.getElementById('categoryBtn').innerHTML = '<i class="fa-solid fa-floppy-disk mr-1"></i> Guardar cambios';
+                    document.getElementById('cancelCategoryEditBtn').classList.remove('hidden');
+                    document.getElementById('cName').focus();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                } else if (btn.dataset.caction === 'toggle') {
                     const { error } = await supabaseClient.from('categories').update({ enabled: !cat.enabled }).eq('id', cat.id);
                     if (error) { console.error(error); showToast('Error al actualizar', true); return; }
                     showToast(cat.enabled ? 'Sección deshabilitada' : 'Sección habilitada ✅');
