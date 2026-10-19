@@ -299,13 +299,38 @@
         <span id="toastMessage" class="text-sm font-medium">Producto agregado al carrito</span>
     </div>
 
-    <!-- Visor de imagen a pantalla completa -->
+    <!-- Visor de imagen/video a pantalla completa -->
     <div id="imageLightbox" class="hidden fixed inset-0 z-[60] bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8">
-        <button id="lightboxCloseBtn" aria-label="Cerrar" class="absolute top-4 right-4 sm:top-6 sm:right-6 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors">
+        <button id="lightboxCloseBtn" aria-label="Cerrar" class="absolute top-4 right-4 sm:top-6 sm:right-6 z-10 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors">
             <i class="fa-solid fa-xmark text-xl"></i>
         </button>
-        <img id="lightboxImage" src="" alt="" class="max-w-full max-h-full object-contain rounded-lg shadow-2xl">
-        <p id="lightboxCaption" class="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 text-white/80 text-sm font-medium px-4 text-center"></p>
+        <button id="lightboxPrevBtn" aria-label="Anterior" class="absolute left-2 sm:left-6 top-1/2 -translate-y-1/2 z-10 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors">
+            <i class="fa-solid fa-chevron-left text-lg"></i>
+        </button>
+        <button id="lightboxNextBtn" aria-label="Siguiente" class="absolute right-2 sm:right-6 top-1/2 -translate-y-1/2 z-10 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors">
+            <i class="fa-solid fa-chevron-right text-lg"></i>
+        </button>
+        <div class="flex flex-col items-center gap-3 max-w-full">
+            <div id="lightboxMedia" class="max-w-full"></div>
+            <p id="lightboxCaption" class="text-white/80 text-sm font-medium px-4 text-center"></p>
+            <div id="lightboxDots" class="flex flex-wrap items-center justify-center gap-1.5"></div>
+        </div>
+    </div>
+
+    <!-- Panel para enviar el pedido a los 2 contactos de WhatsApp -->
+    <div id="waSendPanel" class="hidden fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm">
+        <div class="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 p-5">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <h3 class="font-bold text-slate-900 dark:text-white">Enviar pedido por WhatsApp</h3>
+                    <p id="waPanelText" class="text-xs text-slate-500 dark:text-slate-400 mt-1"></p>
+                </div>
+                <button id="waPanelCloseBtn" aria-label="Cerrar" class="w-8 h-8 shrink-0 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center justify-center transition-colors">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div id="waPanelLinks" class="mt-4 space-y-2"></div>
+        </div>
     </div>
 
     <!-- Footer -->
@@ -386,6 +411,21 @@
             return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         }
 
+        function isVideoUrl(url) {
+            return /\.(mp4|webm|mov|m4v|ogv|3gp)(\?|#|$)/i.test(url || '');
+        }
+
+        // Devuelve todos los medios del producto: portada (image) + galería extra
+        function getGallery(p) {
+            let extra = [];
+            try { extra = p.gallery ? JSON.parse(p.gallery) : []; } catch (e) { extra = []; }
+            if (!Array.isArray(extra)) extra = [];
+            const media = [];
+            if (p.image) media.push(p.image);
+            extra.forEach(u => { if (u && media.indexOf(u) === -1) media.push(u); });
+            return media;
+        }
+
         document.addEventListener('DOMContentLoaded', async () => {
             initTheme();
             initCarousel();
@@ -444,7 +484,8 @@
                 reviews: p.reviews || 0,
                 badge: p.badge,
                 badgeColor: p.badge_color || 'bg-purple-500',
-                image: p.image
+                image: p.image,
+                media: getGallery(p)
             }));
 
             renderCategoryUI();
@@ -567,9 +608,10 @@
             grid.innerHTML = filtered.map(product => `
                 <div class="group rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between">
                     <div>
-                        <div class="relative h-52 w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
-                            <img src="${esc(product.image)}" alt="${esc(product.title)}" data-lightbox-src="${esc(product.image)}" data-lightbox-caption="${esc(product.title)}" class="w-full h-full object-cover cursor-zoom-in group-hover:scale-105 transition-transform duration-500">
+                        <div class="relative h-52 w-full overflow-hidden bg-slate-100 dark:bg-slate-800 cursor-zoom-in" data-gallery-id="${esc(product.id)}">
+                            <img src="${esc(product.image)}" alt="${esc(product.title)}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
                             ${product.badge ? `<span class="absolute top-3 left-3 text-[10px] font-bold uppercase tracking-wider text-white px-2.5 py-1 rounded-full shadow-md ${esc(product.badgeColor)}">${esc(product.badge)}</span>` : ''}
+                            ${product.media.length > 1 ? `<span class="absolute top-3 right-3 text-[10px] font-bold text-white bg-slate-900/70 backdrop-blur-sm px-2.5 py-1 rounded-full shadow-md flex items-center gap-1"><i class="fa-solid ${isVideoUrl(product.media[0]) ? 'fa-circle-play' : 'fa-images'}"></i>${product.media.length}</span>` : ''}
                         </div>
                         <div class="p-5">
                             <span class="text-[11px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider">${esc(product.categoryName)}</span>
@@ -650,9 +692,59 @@
             `).join('');
         }
 
-        function enviarPedidoWhatsApp() {
+        async function enviarPedidoWhatsApp() {
             if (cart.length === 0) return;
+
             const telefonos = ["50379337083", "50378912255"];
+            const mensaje = construirMensajePedido();
+
+            const btn = document.getElementById('checkoutBtn');
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Preparando pedido...</span>';
+
+            let imagenesEnviadas = false;
+            try {
+                // 1) Enviar las imágenes reales junto con el mensaje y los enlaces
+                //    de las fotos. Solo es posible desde el panel nativo de
+                //    compartir (celulares). El usuario elige el chat destino.
+                if (navigator.share && navigator.canShare) {
+                    const archivos = await prepararArchivosParaCompartir();
+                    if (archivos.length > 0 && navigator.canShare({ files: archivos })) {
+                        try {
+                            await navigator.share({ text: mensaje, files: archivos });
+                            imagenesEnviadas = true;
+                        } catch (e) {
+                            // El usuario canceló el panel: se continúa con los chats.
+                        }
+                    }
+                }
+
+                // 2) Abrir el pedido en los 2 números. El segundo chat se abre con
+                //    una pequeña demora para que el navegador y la app de WhatsApp
+                //    procesen el primero. Si el navegador bloquea alguna ventana,
+                //    se muestran botones directos en un panel (un toque siempre
+                //    funciona, porque es una acción del usuario).
+                const urls = telefonos.map(t => `https://wa.me/${t}?text=${encodeURIComponent(mensaje)}`);
+                const w1 = window.open(urls[0], '_blank');
+                setTimeout(() => {
+                    const w2 = window.open(urls[1], '_blank');
+                    const fallidos = [];
+                    if (!w1) fallidos.push(0);
+                    if (!w2) fallidos.push(1);
+                    if (fallidos.length > 0) {
+                        mostrarPanelEnvio(telefonos, urls, fallidos, imagenesEnviadas);
+                    } else {
+                        showToast('¡Pedido abierto en los 2 chats de WhatsApp!');
+                    }
+                }, 1000);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+        }
+
+        function construirMensajePedido() {
             let mensaje = "¡Hola *Variedades Guerra*! 🛍️\nQuiero pedir los siguientes productos:\n\n";
             let total = 0;
 
@@ -664,17 +756,45 @@
 
             mensaje += `\n*Total a Pagar:* $${total.toFixed(2)}`;
             mensaje += "\n\n¿Tienen disponibilidad para coordinar el pago y envío?";
-            // wa.me no permite adjuntar imágenes automáticamente, así que
-            // se incluyen los links de las fotos para que se puedan tocar y ver.
+            // wa.me no puede adjuntar imágenes: se incluyen los links de las fotos
+            // para que se puedan tocar y ver desde el chat.
             mensaje += "\n\nFotos de los productos:\n";
             cart.forEach(item => { mensaje += `${item.title}: ${item.image}\n`; });
+            return mensaje;
+        }
 
-            // Se abre el chat de cada número con el pedido prellenado.
-            // Ambas aperturas son síncronas (dentro del gesto del clic) para
-            // que el navegador no las bloquee como ventanas emergentes.
-            telefonos.forEach(telefono => {
-                window.open(`https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}`, '_blank');
-            });
+        async function prepararArchivosParaCompartir() {
+            const archivos = [];
+            for (const item of cart) {
+                try {
+                    const res = await fetch(item.image);
+                    const blob = await res.blob();
+                    const ext = (blob.type.split('/')[1] || 'jpg').split('+')[0];
+                    const safeName = item.title.replace(/[^a-zA-Z0-9._-]/g, '_') + '.' + ext;
+                    archivos.push(new File([blob], safeName, { type: blob.type }));
+                } catch (e) {
+                    console.warn('No se pudo preparar la imagen para compartir:', item.image, e);
+                }
+            }
+            return archivos;
+        }
+
+        function mostrarPanelEnvio(telefonos, urls, indices, imagenesEnviadas) {
+            document.getElementById('waPanelText').innerText = imagenesEnviadas
+                ? 'Ya se enviaron las fotos. Toca cada número para enviar el pedido completo:'
+                : 'Toca cada número para abrir el pedido y enviarlo:';
+            document.getElementById('waPanelLinks').innerHTML = indices.map(i => `
+                <a href="${urls[i]}" target="_blank" rel="noopener noreferrer"
+                   class="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-lg shadow-emerald-500/20 transition-all">
+                    <i class="fa-brands fa-whatsapp text-lg"></i>
+                    <span>Enviar a ${telefonos[i].slice(3)}</span>
+                </a>
+            `).join('');
+            document.getElementById('waSendPanel').classList.remove('hidden');
+        }
+
+        function cerrarPanelEnvio() {
+            document.getElementById('waSendPanel').classList.add('hidden');
         }
 
         function setupEventListeners() {
@@ -706,30 +826,96 @@
             document.getElementById('mobileMenuBtn').addEventListener('click', toggleMobileMenu);
 
             document.getElementById('productsGrid').addEventListener('click', (e) => {
-                const img = e.target.closest('[data-lightbox-src]');
-                if (img) openLightbox(img.dataset.lightboxSrc, img.dataset.lightboxCaption);
+                const el = e.target.closest('[data-gallery-id]');
+                if (!el) return;
+                const product = products.find(p => String(p.id) === String(el.dataset.galleryId));
+                if (product) openGalleryLightbox(product.media, product.title, 0);
             });
             document.getElementById('lightboxCloseBtn').addEventListener('click', closeLightbox);
             document.getElementById('imageLightbox').addEventListener('click', (e) => {
                 if (e.target.id === 'imageLightbox') closeLightbox();
             });
+            document.getElementById('lightboxPrevBtn').addEventListener('click', () => stepLightbox(-1));
+            document.getElementById('lightboxNextBtn').addEventListener('click', () => stepLightbox(1));
+            document.getElementById('lightboxDots').addEventListener('click', (e) => {
+                const dot = e.target.closest('[data-lightbox-index]');
+                if (!dot) return;
+                lightboxIndex = Number(dot.dataset.lightboxIndex);
+                renderLightbox();
+            });
+            // Deslizar el dedo para cambiar de foto/video en el visor
+            let touchStartX = null;
+            const lightboxEl = document.getElementById('imageLightbox');
+            lightboxEl.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].clientX; }, { passive: true });
+            lightboxEl.addEventListener('touchend', (e) => {
+                if (touchStartX === null) return;
+                const dx = e.changedTouches[0].clientX - touchStartX;
+                touchStartX = null;
+                if (Math.abs(dx) > 50) stepLightbox(dx > 0 ? -1 : 1);
+            }, { passive: true });
+            document.getElementById('waPanelCloseBtn').addEventListener('click', cerrarPanelEnvio);
+            document.getElementById('waSendPanel').addEventListener('click', (e) => {
+                if (e.target.id === 'waSendPanel') cerrarPanelEnvio();
+            });
             document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape') closeLightbox();
+                if (e.key === 'Escape') { closeLightbox(); cerrarPanelEnvio(); }
+                const lightboxAbierto = !document.getElementById('imageLightbox').classList.contains('hidden');
+                if (!lightboxAbierto) return;
+                if (e.key === 'ArrowLeft') stepLightbox(-1);
+                else if (e.key === 'ArrowRight') stepLightbox(1);
             });
         }
 
-        // ---------- VISOR DE IMAGEN A PANTALLA COMPLETA ----------
-        function openLightbox(src, caption) {
-            document.getElementById('lightboxImage').src = src;
-            document.getElementById('lightboxImage').alt = caption || '';
-            document.getElementById('lightboxCaption').innerText = caption || '';
+        // ---------- VISOR DE IMAGEN/VIDEO A PANTALLA COMPLETA ----------
+        let lightboxMediaList = [];
+        let lightboxIndex = 0;
+        let lightboxCaptionText = '';
+
+        function openGalleryLightbox(media, caption, startIndex) {
+            if (!media || media.length === 0) return;
+            lightboxMediaList = media;
+            lightboxIndex = Math.min(Math.max(startIndex || 0, 0), media.length - 1);
+            lightboxCaptionText = caption || '';
             document.getElementById('imageLightbox').classList.remove('hidden');
             document.body.style.overflow = 'hidden';
+            renderLightbox();
+        }
+
+        function renderLightbox() {
+            const url = lightboxMediaList[lightboxIndex];
+            if (!url) return;
+            const mediaBox = document.getElementById('lightboxMedia');
+            mediaBox.innerHTML = isVideoUrl(url)
+                ? `<video src="${esc(url)}" controls playsinline preload="metadata" class="max-w-full max-h-[70vh] rounded-lg shadow-2xl"></video>`
+                : `<img src="${esc(url)}" alt="${esc(lightboxCaptionText)}" class="max-w-full max-h-[70vh] object-contain rounded-lg shadow-2xl">`;
+
+            const total = lightboxMediaList.length;
+            document.getElementById('lightboxCaption').innerText = total > 1
+                ? `${lightboxCaptionText} · ${lightboxIndex + 1} de ${total}`
+                : lightboxCaptionText;
+
+            document.getElementById('lightboxDots').innerHTML = total > 1
+                ? lightboxMediaList.map((u, i) => `
+                    <button data-lightbox-index="${i}" aria-label="Ver ${i + 1}" class="w-2.5 h-2.5 rounded-full transition-colors ${i === lightboxIndex ? 'bg-white' : 'bg-white/30 hover:bg-white/60'} ${isVideoUrl(u) ? 'outline outline-2 outline-purple-400' : ''}"></button>`).join('')
+                : '';
+
+            const navHidden = total <= 1;
+            document.getElementById('lightboxPrevBtn').classList.toggle('hidden', navHidden);
+            document.getElementById('lightboxNextBtn').classList.toggle('hidden', navHidden);
+        }
+
+        function stepLightbox(delta) {
+            const total = lightboxMediaList.length;
+            if (total <= 1) return;
+            lightboxIndex = (lightboxIndex + delta + total) % total;
+            renderLightbox();
         }
 
         function closeLightbox() {
             document.getElementById('imageLightbox').classList.add('hidden');
-            document.getElementById('lightboxImage').src = '';
+            document.getElementById('lightboxMedia').innerHTML = '';
+            document.getElementById('lightboxDots').innerHTML = '';
+            lightboxMediaList = [];
             document.body.style.overflow = '';
         }
 

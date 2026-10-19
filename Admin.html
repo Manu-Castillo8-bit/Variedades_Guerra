@@ -172,12 +172,10 @@
                     </div>
 
                     <div class="sm:col-span-2">
-                        <label class="text-xs font-bold text-slate-600 block mb-1">Imagen del producto *</label>
-                        <input type="file" id="fImageFile" accept="image/*" class="w-full text-sm">
-                        <div class="flex items-center gap-3 mt-2">
-                            <img id="fImagePreview" class="hidden w-20 h-20 rounded-lg object-cover border border-slate-200">
-                            <span id="fImageStatus" class="text-xs text-slate-400"></span>
-                        </div>
+                        <label class="text-xs font-bold text-slate-600 block mb-1">Imágenes y videos del producto * <span class="font-normal text-slate-400">(la primera imagen será la portada)</span></label>
+                        <input type="file" id="fMediaFiles" multiple accept="image/*,video/*" class="w-full text-sm">
+                        <p class="text-[11px] text-slate-400 mt-1">Puedes elegir varias fotos y videos a la vez (varias perspectivas). Tamaño máximo: 50 MB por archivo.</p>
+                        <div id="fMediaPreview" class="flex flex-wrap gap-2 mt-3"></div>
                     </div>
 
                     <div class="sm:col-span-2 flex items-center gap-3 pt-2">
@@ -236,7 +234,10 @@
         let editingCategoryId = null;
         let adminProducts = [];
         let adminCategories = [];
-        let pendingImageFile = null;
+        let pendingFiles = [];        // archivos nuevos seleccionados (aún sin subir)
+        let currentGallery = [];      // medios ya subidos del producto (portada primero)
+        let removedMediaUrls = [];    // medios quitados (se borran del Storage al guardar)
+        let previewObjectUrls = [];
         let productSearchQuery = '';
         let productCategoryFilterValue = 'todas';
 
@@ -502,18 +503,25 @@
 
         // ---------- FORMULARIO DE PRODUCTOS ----------
         function setupFormListeners() {
-            document.getElementById('fImageFile').addEventListener('change', (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                pendingImageFile = file;
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    const img = document.getElementById('fImagePreview');
-                    img.src = ev.target.result;
-                    img.classList.remove('hidden');
-                };
-                reader.readAsDataURL(file);
-                document.getElementById('fImageStatus').innerText = file.name;
+            document.getElementById('fMediaFiles').addEventListener('change', (e) => {
+                Array.from(e.target.files).forEach(f => {
+                    if (f.type.startsWith('image/') || f.type.startsWith('video/')) pendingFiles.push(f);
+                });
+                e.target.value = '';
+                renderMediaPreview();
+            });
+
+            document.getElementById('fMediaPreview').addEventListener('click', (e) => {
+                const btn = e.target.closest('button[data-media-remove]');
+                if (!btn) return;
+                if (btn.dataset.mediaRemove === 'pending') {
+                    pendingFiles.splice(Number(btn.dataset.index), 1);
+                } else {
+                    const url = currentGallery[Number(btn.dataset.index)];
+                    currentGallery.splice(Number(btn.dataset.index), 1);
+                    if (url) removedMediaUrls.push(url);
+                }
+                renderMediaPreview();
             });
 
             document.getElementById('cancelEditBtn').addEventListener('click', resetForm);
@@ -531,12 +539,13 @@
 
         function resetForm() {
             editingId = null;
-            pendingImageFile = null;
+            pendingFiles = [];
+            currentGallery = [];
+            removedMediaUrls = [];
             document.getElementById('productForm').reset();
             document.getElementById('productId').value = '';
             document.getElementById('fEnabled').checked = true;
-            document.getElementById('fImagePreview').classList.add('hidden');
-            document.getElementById('fImageStatus').innerText = '';
+            renderMediaPreview();
             document.getElementById('formTitle').innerHTML = '<i class="fa-solid fa-circle-plus text-purple-600"></i> Agregar producto';
             document.getElementById('submitBtn').innerHTML = '<i class="fa-solid fa-floppy-disk mr-1"></i> Guardar producto';
             document.getElementById('cancelEditBtn').classList.add('hidden');
@@ -560,8 +569,10 @@
                 statusEl.className = 'text-xs font-medium text-red-600';
                 return;
             }
-            if (!editingId && !pendingImageFile) {
-                statusEl.innerText = 'Selecciona una imagen para el producto.';
+            const hasExistingImage = currentGallery.some(u => !isVideoUrl(u));
+            const hasNewImage = pendingFiles.some(f => f.type.startsWith('image/'));
+            if (!hasExistingImage && !hasNewImage) {
+                statusEl.innerText = 'Selecciona al menos una imagen para el producto (será la portada).';
                 statusEl.className = 'text-xs font-medium text-red-600';
                 return;
             }
@@ -571,8 +582,24 @@
             statusEl.className = 'text-xs font-medium text-slate-500';
 
             try {
-                let imageUrl = null;
-                if (pendingImageFile) imageUrl = await uploadImage(pendingImageFile);
+                // Borra del Storage los medios que se quitaron de la galería
+                if (removedMediaUrls.length > 0) {
+                    const paths = removedMediaUrls.map(urlToStoragePath).filter(Boolean);
+                    if (paths.length) {
+                        try { await supabaseClient.storage.from('product-images').remove(paths); }
+                        catch (e) { console.warn('No se pudieron borrar archivos del Storage:', e); }
+                    }
+                }
+
+                // Sube los archivos nuevos y arma la galería completa
+                const fullGallery = [...currentGallery];
+                if (pendingFiles.length > 0) {
+                    statusEl.innerText = `Subiendo ${pendingFiles.length} archivo(s)...`;
+                    for (const f of pendingFiles) fullGallery.push(await uploadMedia(f));
+                }
+
+                const cover = fullGallery.find(u => !isVideoUrl(u));
+                if (!cover) throw new Error('La galería necesita al menos una imagen.');
 
                 const payload = {
                     title,
@@ -582,9 +609,10 @@
                     price,
                     badge,
                     badge_color: badgeColor,
-                    enabled
+                    enabled,
+                    image: cover,
+                    gallery: JSON.stringify(fullGallery)
                 };
-                if (imageUrl) payload.image = imageUrl;
 
                 if (editingId) {
                     const { error } = await supabaseClient.from('products').update(payload).eq('id', editingId);
@@ -608,7 +636,7 @@
             }
         }
 
-        async function uploadImage(file) {
+        async function uploadMedia(file) {
             const fileExt = file.name.split('.').pop();
             const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
             const { error: uploadError } = await supabaseClient.storage
@@ -618,6 +646,65 @@
 
             const { data } = supabaseClient.storage.from('product-images').getPublicUrl(fileName);
             return data.publicUrl;
+        }
+
+        function isVideoUrl(url) {
+            return /\.(mp4|webm|mov|m4v|ogv|3gp)(\?|#|$)/i.test(url || '');
+        }
+
+        function urlToStoragePath(url) {
+            const marker = '/product-images/';
+            const i = (url || '').indexOf(marker);
+            return i === -1 ? null : (url || '').slice(i + marker.length);
+        }
+
+        // Devuelve todos los medios del producto: portada (image) + galería extra
+        function getGallery(p) {
+            let extra = [];
+            try { extra = p.gallery ? JSON.parse(p.gallery) : []; } catch (e) { extra = []; }
+            if (!Array.isArray(extra)) extra = [];
+            const media = [];
+            if (p.image) media.push(p.image);
+            extra.forEach(u => { if (u && media.indexOf(u) === -1) media.push(u); });
+            return media;
+        }
+
+        function renderMediaPreview() {
+            previewObjectUrls.forEach(u => URL.revokeObjectURL(u));
+            previewObjectUrls = [];
+
+            const wrap = document.getElementById('fMediaPreview');
+            const coverIdx = currentGallery.findIndex(u => !isVideoUrl(u));
+
+            const existing = currentGallery.map((url, i) => {
+                const video = isVideoUrl(url);
+                return `
+                <div class="relative w-20 h-20 rounded-lg overflow-hidden border border-slate-200 bg-slate-100">
+                    ${video
+                        ? `<video src="${esc(url)}" muted preload="metadata" class="w-full h-full object-cover"></video>
+                           <span class="absolute inset-0 flex items-center justify-center text-white/90 text-lg drop-shadow"><i class="fa-solid fa-circle-play"></i></span>`
+                        : `<img src="${esc(url)}" alt="" class="w-full h-full object-cover">`}
+                    ${i === coverIdx ? '<span class="absolute bottom-0 inset-x-0 text-[9px] font-bold text-white bg-purple-600/90 text-center leading-4">Portada</span>' : ''}
+                    <button type="button" data-media-remove="existing" data-index="${i}" aria-label="Quitar" class="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-red-600 text-white text-xs leading-none flex items-center justify-center hover:bg-red-700"><i class="fa-solid fa-xmark"></i></button>
+                </div>`;
+            }).join('');
+
+            const pending = pendingFiles.map((f, i) => {
+                const url = URL.createObjectURL(f);
+                previewObjectUrls.push(url);
+                const video = f.type.startsWith('video/');
+                return `
+                <div class="relative w-20 h-20 rounded-lg overflow-hidden border border-dashed border-purple-300 bg-purple-50">
+                    ${video
+                        ? `<video src="${url}" muted preload="metadata" class="w-full h-full object-cover"></video>
+                           <span class="absolute inset-0 flex items-center justify-center text-white/90 text-lg drop-shadow"><i class="fa-solid fa-circle-play"></i></span>`
+                        : `<img src="${url}" alt="" class="w-full h-full object-cover">`}
+                    <span class="absolute bottom-0 inset-x-0 text-[9px] font-bold text-white bg-slate-900/70 text-center leading-4">Nuevo</span>
+                    <button type="button" data-media-remove="pending" data-index="${i}" aria-label="Quitar" class="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-red-600 text-white text-xs leading-none flex items-center justify-center hover:bg-red-700"><i class="fa-solid fa-xmark"></i></button>
+                </div>`;
+            }).join('');
+
+            wrap.innerHTML = existing + pending;
         }
 
         // ---------- LISTADO / EDITAR / HABILITAR / ELIMINAR ----------
@@ -670,10 +757,12 @@
 
             list.innerHTML = filtered.map(p => {
                 const on = p.enabled !== false;
+                const mediaCount = getGallery(p).length;
                 return `
                 <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm ${on ? '' : 'opacity-60'}">
                     <div class="relative">
                         <img src="${esc(p.image)}" alt="${esc(p.title)}" data-lightbox-src="${esc(p.image)}" data-lightbox-caption="${esc(p.title)}" class="w-full h-36 object-cover cursor-zoom-in ${on ? '' : 'grayscale'}">
+                        ${mediaCount > 1 ? `<span class="absolute top-2 right-2 text-[10px] font-bold bg-slate-900/80 text-white rounded px-2 py-1"><i class="fa-solid fa-images mr-1"></i>${mediaCount}</span>` : ''}
                         ${on ? '' : '<span class="absolute top-2 left-2 text-[10px] font-bold uppercase bg-slate-900 text-white rounded px-2 py-1">Deshabilitado</span>'}
                     </div>
                     <div class="p-4">
@@ -751,7 +840,11 @@
 
         function editProduct(p) {
             editingId = p.id;
-            pendingImageFile = null;
+            pendingFiles = [];
+            removedMediaUrls = [];
+            currentGallery = getGallery(p);
+            document.getElementById('fMediaFiles').value = '';
+            renderMediaPreview();
             document.getElementById('productId').value = p.id;
             document.getElementById('fTitle').value = p.title;
             document.getElementById('fDescription').value = p.description || '';
@@ -760,10 +853,6 @@
             document.getElementById('fBadge').value = p.badge || '';
             document.getElementById('fBadgeColor').value = p.badge_color || 'bg-purple-500';
             document.getElementById('fEnabled').checked = p.enabled !== false;
-            const img = document.getElementById('fImagePreview');
-            img.src = p.image;
-            img.classList.remove('hidden');
-            document.getElementById('fImageStatus').innerText = 'Imagen actual (sube una nueva solo si quieres cambiarla)';
 
             document.getElementById('formTitle').innerHTML = '<i class="fa-solid fa-pen text-purple-600"></i> Editando: ' + esc(p.title);
             document.getElementById('submitBtn').innerHTML = '<i class="fa-solid fa-floppy-disk mr-1"></i> Guardar cambios';
@@ -773,10 +862,19 @@
 
         async function deleteProduct(id, title) {
             if (!confirm(`¿Eliminar "${title}"? Esta acción no se puede deshacer.`)) return;
+            const p = adminProducts.find(x => String(x.id) === String(id));
             const { error } = await supabaseClient.from('products').delete().eq('id', id);
             if (error) {
                 showToast('Error al eliminar', true);
                 return;
+            }
+            // Borra del Storage las imágenes y videos del producto
+            if (p) {
+                const paths = getGallery(p).map(urlToStoragePath).filter(Boolean);
+                if (paths.length) {
+                    try { await supabaseClient.storage.from('product-images').remove(paths); }
+                    catch (e) { console.warn('No se pudieron borrar los archivos del Storage:', e); }
+                }
             }
             showToast('Producto eliminado 🗑️');
             loadAdminProducts();

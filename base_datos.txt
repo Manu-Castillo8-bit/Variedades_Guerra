@@ -25,6 +25,7 @@ create table if not exists products (
   badge text,
   badge_color text,
   image text,
+  gallery text,
   created_at timestamptz default now()
 );
 
@@ -60,6 +61,9 @@ using (true);
 2. Nómbralo exactamente: `product-images`
 3. Actívalo como **Public bucket** (para que las imágenes se vean en tu página).
 4. Ahora ve otra vez a **SQL Editor** y corre esto para dar permisos:
+
+> El bucket acepta imágenes **y videos** (máx. 50 MB por archivo en el plan gratis).
+> Si al crearlo le pusiste "Allowed MIME types" déjalo vacío, o los videos serán rechazados.
 
 ```sql
 create policy "Public can view product images"
@@ -110,3 +114,13 @@ Tu página ya no trae los productos "de fábrica" (Kit Banner, Termo, Mochila, e
 
 ## 7. Subir los archivos a tu hosting
 Sube `index.html` y `admin.html` al mismo lugar donde tienes tu página ahora (mismo hosting/carpeta). `admin.html` no aparece en ningún menú visible de tu tienda — solo tú accedes escribiendo la dirección directamente, por ejemplo `tudominio.com/admin.html`. Como además pide inicio de sesión, nadie más puede entrar aunque conozca el enlace.
+
+## 8. Activar la galería de imágenes y videos (campo "gallery")
+Si tu base de datos se creó **antes** de esta actualización, falta una columna para guardar las varias imágenes y videos de cada producto. Ve a **SQL Editor** → **New query**, pega esto y dale **Run**:
+
+```sql
+alter table products add column if not exists gallery text;
+```
+
+Listo. Ya podrás subir varias imágenes y videos por producto desde el panel admin, y se verán con flechas en el visor de la página principal.
+> Si NO ejecutas este SQL, el panel admin te dará error "column products.gallery does not exist" al guardar un producto.
