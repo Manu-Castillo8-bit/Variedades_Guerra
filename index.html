@@ -399,6 +399,7 @@
         let products = [];
         let categories = [];
         let cart = [];
+        let cartSeq = 0;
         let activeCategory = 'todos';
         let searchQuery = '';
         let currentSlide = 0;
@@ -473,20 +474,27 @@
             const enabledSlugs = new Set(categories.map(c => c.slug));
             prods = prods.filter(p => enabledSlugs.has(p.category));
 
-            products = prods.map(p => ({
-                id: p.id,
-                title: p.title,
-                description: p.description,
-                category: p.category,
-                categoryName: p.category_name,
-                price: Number(p.price),
-                rating: Number(p.rating || 5),
-                reviews: p.reviews || 0,
-                badge: p.badge,
-                badgeColor: p.badge_color || 'bg-purple-500',
-                image: p.image,
-                media: getGallery(p)
-            }));
+            products = prods.map(p => {
+                const media = getGallery(p);
+                const fotos = media.filter(u => !isVideoUrl(u));
+                return {
+                    id: p.id,
+                    title: p.title,
+                    description: p.description,
+                    category: p.category,
+                    categoryName: p.category_name,
+                    price: Number(p.price),
+                    rating: Number(p.rating || 5),
+                    reviews: p.reviews || 0,
+                    badge: p.badge,
+                    badgeColor: p.badge_color || 'bg-purple-500',
+                    image: p.image,
+                    media: media,
+                    fotos: fotos,
+                    // Imagen de estilo elegida por el usuario (portada por defecto)
+                    selectedImage: fotos.includes(p.image) ? p.image : (fotos[0] || p.image || '')
+                };
+            });
 
             renderCategoryUI();
             renderProducts();
@@ -609,10 +617,19 @@
                 <div class="group rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between">
                     <div>
                         <div class="relative h-52 w-full overflow-hidden bg-slate-100 dark:bg-slate-800 cursor-zoom-in" data-gallery-id="${esc(product.id)}">
-                            <img src="${esc(product.image)}" alt="${esc(product.title)}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                            <img src="${esc(product.selectedImage || product.image)}" alt="${esc(product.title)}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
                             ${product.badge ? `<span class="absolute top-3 left-3 text-[10px] font-bold uppercase tracking-wider text-white px-2.5 py-1 rounded-full shadow-md ${esc(product.badgeColor)}">${esc(product.badge)}</span>` : ''}
                             ${product.media.length > 1 ? `<span class="absolute top-3 right-3 text-[10px] font-bold text-white bg-slate-900/70 backdrop-blur-sm px-2.5 py-1 rounded-full shadow-md flex items-center gap-1"><i class="fa-solid ${isVideoUrl(product.media[0]) ? 'fa-circle-play' : 'fa-images'}"></i>${product.media.length}</span>` : ''}
                         </div>
+                        ${product.fotos.length > 1 ? `
+                        <div class="px-5 pt-3 flex items-center gap-2 overflow-x-auto">
+                            <span class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase shrink-0">Estilo:</span>
+                            ${product.fotos.map((url, i) => `
+                            <button type="button" data-select-media="${esc(product.id)}" data-media-url="${esc(url)}" title="Elegir imagen ${i + 1}" aria-label="Elegir imagen ${i + 1}"
+                                class="shrink-0 w-10 h-10 rounded-lg overflow-hidden border-2 transition-all ${url === product.selectedImage ? 'border-purple-600 ring-2 ring-purple-400/50 scale-105' : 'border-slate-200 dark:border-slate-700 opacity-50 hover:opacity-100 hover:scale-105'}">
+                                <img src="${esc(url)}" alt="" class="w-full h-full object-cover">
+                            </button>`).join('')}
+                        </div>` : ''}
                         <div class="p-5">
                             <span class="text-[11px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider">${esc(product.categoryName)}</span>
                             <h3 class="font-bold text-slate-900 dark:text-white mt-1 text-base line-clamp-2">${esc(product.title)}</h3>
@@ -634,21 +651,34 @@
             `).join('');
         }
 
+        function selectProductImage(id, url) {
+            const product = products.find(p => String(p.id) === String(id));
+            if (!product || !url || product.selectedImage === url) return;
+            product.selectedImage = url;
+            renderProducts();
+        }
+
         function addToCart(id) {
             const product = products.find(p => String(p.id) === String(id));
             if (!product) return;
-            const item = cart.find(i => String(i.id) === String(id));
-            if (item) item.quantity += 1;
-            else cart.push({ ...product, quantity: 1 });
+            // Imagen de estilo elegida por el usuario en la tarjeta
+            const imagenElegida = product.selectedImage || product.image || '';
+            // Cada combinación producto + imagen elegida es una línea distinta del carrito
+            const item = cart.find(i => String(i.id) === String(id) && i.selectedImage === imagenElegida);
+            if (item) {
+                item.quantity += 1;
+            } else {
+                cart.push({ ...product, selectedImage: imagenElegida, cartKey: `ck${++cartSeq}`, quantity: 1 });
+            }
             updateCartUI();
             showToast(`¡"${product.title}" agregado al carrito!`);
         }
 
-        function updateQuantity(id, delta) {
-            const item = cart.find(i => String(i.id) === String(id));
+        function updateQuantity(cartKey, delta) {
+            const item = cart.find(i => i.cartKey === cartKey);
             if (!item) return;
             item.quantity += delta;
-            if (item.quantity <= 0) cart = cart.filter(i => String(i.id) !== String(id));
+            if (item.quantity <= 0) cart = cart.filter(i => i.cartKey !== cartKey);
             updateCartUI();
         }
 
@@ -678,14 +708,18 @@
             document.getElementById('checkoutBtn').disabled = false;
             itemsContainer.innerHTML = cart.map(item => `
                 <div class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-                    <img src="${esc(item.image)}" alt="${esc(item.title)}" class="w-16 h-16 rounded-lg object-cover">
+                    <div class="relative shrink-0">
+                        <img src="${esc(item.selectedImage || item.image)}" alt="${esc(item.title)}" class="w-16 h-16 rounded-lg object-cover">
+                        ${(item.fotos && item.fotos.length > 1) ? `<span class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-purple-600 text-white text-[9px] flex items-center justify-center shadow"><i class="fa-solid fa-palette"></i></span>` : ''}
+                    </div>
                     <div class="flex-grow min-w-0">
                         <h4 class="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">${esc(item.title)}</h4>
                         <span class="text-xs font-extrabold text-purple-600 dark:text-purple-400">$${item.price.toFixed(2)}</span>
+                        ${(item.fotos && item.fotos.length > 1) ? `<p class="text-[10px] text-slate-400 dark:text-slate-500 truncate">Estilo elegido por ti</p>` : ''}
                         <div class="flex items-center gap-2 mt-2">
-                            <button onclick="updateQuantity('${item.id}', -1)" class="w-6 h-6 rounded bg-white dark:bg-slate-700 text-xs">-</button>
+                            <button onclick="updateQuantity('${item.cartKey}', -1)" class="w-6 h-6 rounded bg-white dark:bg-slate-700 text-xs">-</button>
                             <span class="text-xs font-bold">${item.quantity}</span>
-                            <button onclick="updateQuantity('${item.id}', 1)" class="w-6 h-6 rounded bg-white dark:bg-slate-700 text-xs">+</button>
+                            <button onclick="updateQuantity('${item.cartKey}', 1)" class="w-6 h-6 rounded bg-white dark:bg-slate-700 text-xs">+</button>
                         </div>
                     </div>
                 </div>
@@ -724,19 +758,25 @@
         function construirMensajePedido() {
             let mensaje = "¡Hola *Variedades Guerra*! 🛍️\nQuiero pedir los siguientes productos:\n\n";
             let total = 0;
+            let conEstilo = false;
 
             cart.forEach(item => {
                 const subtotal = item.price * item.quantity;
                 total += subtotal;
                 mensaje += `• ${item.quantity}x ${item.title} - $${subtotal.toFixed(2)}\n`;
+                // Indica al vendedor qué imagen/estilo escogió el cliente
+                if (item.fotos && item.fotos.length > 1 && item.selectedImage) {
+                    conEstilo = true;
+                    mensaje += `   ↳ Estilo elegido: ${item.selectedImage}\n`;
+                }
             });
 
             mensaje += `\n*Total a Pagar:* $${total.toFixed(2)}`;
             mensaje += "\n\n¿Tienen disponibilidad para coordinar el pago y envío?";
             // wa.me no puede adjuntar imágenes: se incluyen los links de las fotos
             // para que se puedan tocar y ver desde el chat.
-            mensaje += "\n\nFotos de los productos:\n";
-            cart.forEach(item => { mensaje += `${item.title}: ${item.image}\n`; });
+            mensaje += conEstilo ? "\n\nFotos de los productos (imagen elegida):\n" : "\n\nFotos de los productos:\n";
+            cart.forEach(item => { mensaje += `${item.title}: ${item.selectedImage || item.image}\n`; });
             return mensaje;
         }
 
@@ -787,10 +827,20 @@
             document.getElementById('mobileMenuBtn').addEventListener('click', toggleMobileMenu);
 
             document.getElementById('productsGrid').addEventListener('click', (e) => {
+                // Clic en una miniatura: elige el estilo/imagen del producto
+                const sel = e.target.closest('[data-select-media]');
+                if (sel) {
+                    selectProductImage(sel.dataset.selectMedia, sel.dataset.mediaUrl);
+                    return;
+                }
                 const el = e.target.closest('[data-gallery-id]');
                 if (!el) return;
                 const product = products.find(p => String(p.id) === String(el.dataset.galleryId));
-                if (product) openGalleryLightbox(product.media, product.title, 0);
+                if (product) {
+                    // Abrir el visor directamente en la imagen elegida
+                    const start = Math.max(product.media.indexOf(product.selectedImage), 0);
+                    openGalleryLightbox(product.media, product.title, start);
+                }
             });
             document.getElementById('lightboxCloseBtn').addEventListener('click', closeLightbox);
             document.getElementById('imageLightbox').addEventListener('click', (e) => {
