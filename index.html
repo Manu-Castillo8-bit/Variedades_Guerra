@@ -692,55 +692,32 @@
             `).join('');
         }
 
-        async function enviarPedidoWhatsApp() {
+        function enviarPedidoWhatsApp() {
             if (cart.length === 0) return;
 
-            const telefonos = ["50379337083", "50378912255"];
+            const numero = "50379337083";
             const mensaje = construirMensajePedido();
+            const url = `https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`;
 
             const btn = document.getElementById('checkoutBtn');
             const originalHtml = btn.innerHTML;
             btn.disabled = true;
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Preparando pedido...</span>';
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Abriendo WhatsApp...</span>';
 
-            let imagenesEnviadas = false;
-            try {
-                // 1) Enviar las imágenes reales junto con el mensaje y los enlaces
-                //    de las fotos. Solo es posible desde el panel nativo de
-                //    compartir (celulares). El usuario elige el chat destino.
-                if (navigator.share && navigator.canShare) {
-                    const archivos = await prepararArchivosParaCompartir();
-                    if (archivos.length > 0 && navigator.canShare({ files: archivos })) {
-                        try {
-                            await navigator.share({ text: mensaje, files: archivos });
-                            imagenesEnviadas = true;
-                        } catch (e) {
-                            // El usuario canceló el panel: se continúa con los chats.
-                        }
-                    }
-                }
+            // Se abre el chat directamente dentro del gesto del clic, para que
+            // el navegador lo permita.
+            let abierto = false;
+            try { abierto = !!window.open(url, '_blank'); } catch (e) { console.warn(e); }
 
-                // 2) Abrir el pedido en los 2 números. El segundo chat se abre con
-                //    una pequeña demora para que el navegador y la app de WhatsApp
-                //    procesen el primero. Si el navegador bloquea alguna ventana,
-                //    se muestran botones directos en un panel (un toque siempre
-                //    funciona, porque es una acción del usuario).
-                const urls = telefonos.map(t => `https://wa.me/${t}?text=${encodeURIComponent(mensaje)}`);
-                const w1 = window.open(urls[0], '_blank');
-                setTimeout(() => {
-                    const w2 = window.open(urls[1], '_blank');
-                    const fallidos = [];
-                    if (!w1) fallidos.push(0);
-                    if (!w2) fallidos.push(1);
-                    if (fallidos.length > 0) {
-                        mostrarPanelEnvio(telefonos, urls, fallidos, imagenesEnviadas);
-                    } else {
-                        showToast('¡Pedido abierto en los 2 chats de WhatsApp!');
-                    }
-                }, 1000);
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = originalHtml;
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+
+            if (!abierto) {
+                // Respaldo: si el navegador bloqueó la ventana, se muestra un
+                // botón directo (tocar un botón siempre está permitido).
+                mostrarPanelEnvio([numero], [url], [0]);
+            } else {
+                showToast('¡Pedido abierto en WhatsApp!');
             }
         }
 
@@ -763,26 +740,10 @@
             return mensaje;
         }
 
-        async function prepararArchivosParaCompartir() {
-            const archivos = [];
-            for (const item of cart) {
-                try {
-                    const res = await fetch(item.image);
-                    const blob = await res.blob();
-                    const ext = (blob.type.split('/')[1] || 'jpg').split('+')[0];
-                    const safeName = item.title.replace(/[^a-zA-Z0-9._-]/g, '_') + '.' + ext;
-                    archivos.push(new File([blob], safeName, { type: blob.type }));
-                } catch (e) {
-                    console.warn('No se pudo preparar la imagen para compartir:', item.image, e);
-                }
-            }
-            return archivos;
-        }
-
-        function mostrarPanelEnvio(telefonos, urls, indices, imagenesEnviadas) {
-            document.getElementById('waPanelText').innerText = imagenesEnviadas
-                ? 'Ya se enviaron las fotos. Toca cada número para enviar el pedido completo:'
-                : 'Toca cada número para abrir el pedido y enviarlo:';
+        function mostrarPanelEnvio(telefonos, urls, indices) {
+            document.getElementById('waPanelText').innerText = indices.length > 1
+                ? 'Toca para abrir los chats y enviar tu pedido:'
+                : 'Toca para abrir el chat y enviar tu pedido:';
             document.getElementById('waPanelLinks').innerHTML = indices.map(i => `
                 <a href="${urls[i]}" target="_blank" rel="noopener noreferrer"
                    class="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-lg shadow-emerald-500/20 transition-all">
