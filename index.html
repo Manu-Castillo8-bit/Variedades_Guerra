@@ -466,7 +466,6 @@
                 const seen = new Map();
                 prods.forEach(p => { if (!seen.has(p.category)) seen.set(p.category, { slug: p.category, name: p.category_name, emoji: '' }); });
                 categories = [...seen.values()];
-
             } else {
                 categories = catRes.data || [];
             }
@@ -499,13 +498,13 @@
                     fotos: fotos,
                     // Imagen de estilo elegida por el usuario (portada por defecto)
                     selectedImage: fotos.includes(p.image) ? p.image : (fotos[0] || p.image || '')
-
                 };
             });
 
             renderCategoryUI();
             renderProducts();
         }
+        
 
         // Construye filtros, menú móvil, footer y botones del carrusel
         function renderCategoryUI() {
