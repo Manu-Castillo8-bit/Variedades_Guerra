@@ -466,6 +466,7 @@
                 const seen = new Map();
                 prods.forEach(p => { if (!seen.has(p.category)) seen.set(p.category, { slug: p.category, name: p.category_name, emoji: '' }); });
                 categories = [...seen.values()];
+
             } else {
                 categories = catRes.data || [];
             }
@@ -473,6 +474,11 @@
             // Solo productos cuya categoría esté habilitada
             const enabledSlugs = new Set(categories.map(c => c.slug));
             prods = prods.filter(p => enabledSlugs.has(p.category));
+
+            // Los productos con insignia van primero; el resto conserva el orden normal
+            // (más recientes primero). Si se quita la insignia, vuelve a su lugar normal.
+            const tieneInsignia = p => !!(p.badge && String(p.badge).trim());
+            prods.sort((a, b) => Number(tieneInsignia(b)) - Number(tieneInsignia(a)));
 
             products = prods.map(p => {
                 const media = getGallery(p);
@@ -493,6 +499,7 @@
                     fotos: fotos,
                     // Imagen de estilo elegida por el usuario (portada por defecto)
                     selectedImage: fotos.includes(p.image) ? p.image : (fotos[0] || p.image || '')
+
                 };
             });
 
